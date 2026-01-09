@@ -53,5 +53,17 @@ export class TopicLineSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					}),
 			);
+
+		new Setting(containerEl)
+			.setName("Show file name")
+			.setDesc("Display the source file name for each topic")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.showFileName)
+					.onChange(async (value) => {
+						this.plugin.settings.showFileName = value;
+						await this.plugin.saveSettings();
+					}),
+			);
 	}
 }
