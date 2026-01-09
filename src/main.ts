@@ -9,6 +9,7 @@ import { debounce, findLineByBlockId, removeBlockIdFromLine } from "./utils";
 export default class TopicLinePlugin extends Plugin {
 	settings: TopicLineSettings;
 	topicStore: TopicStore;
+	private settingsChangeCallbacks: Array<() => void> = [];
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -54,6 +55,23 @@ export default class TopicLinePlugin extends Plugin {
 	async saveSettings(): Promise<void> {
 		const data = (await this.loadData()) as Record<string, unknown> | null;
 		await this.saveData({ ...data, settings: this.settings });
+		this.notifySettingsChange();
+	}
+
+	/**
+	 * 設定変更通知用コールバックを登録する
+	 */
+	onSettingsChange(callback: () => void): void {
+		this.settingsChangeCallbacks.push(callback);
+	}
+
+	/**
+	 * 設定変更を通知する
+	 */
+	private notifySettingsChange(): void {
+		for (const callback of this.settingsChangeCallbacks) {
+			callback();
+		}
 	}
 
 	/**

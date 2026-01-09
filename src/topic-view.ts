@@ -41,6 +41,7 @@ export class TopicView extends ItemView {
 	async onOpen(): Promise<void> {
 		this.render();
 		this.plugin.topicStore.onChange(() => this.render());
+		this.plugin.onSettingsChange(() => this.render());
 	}
 
 	async onClose(): Promise<void> {
