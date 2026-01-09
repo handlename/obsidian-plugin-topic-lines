@@ -29,7 +29,7 @@
   - 詳細: `src/settings-tab.ts` を新規作成し、`PluginSettingTab` を継承した `TopicLineSettingTab` クラスを実装する
   - 完了条件: `TopicLineSettingTab` クラスが作成され、空の `display()` メソッドが実装されている
 
-- [ ] T-2.2: Frontmatterキー設定UIの実装
+- [x] T-2.2: Frontmatterキー設定UIの実装
   - 目的: 表示するfrontmatterキーを設定できるUIを提供する
   - 詳細: テキストエリアまたはテキスト入力を使用し、カンマ区切りまたは改行区切りでキーを入力できるようにする。入力値は即座に設定に反映・保存する
   - 完了条件: 設定画面でfrontmatterキーを入力でき、値が `plugin.settings.frontmatterKeys` に配列として保存される
