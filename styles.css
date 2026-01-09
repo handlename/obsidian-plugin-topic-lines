@@ -45,18 +45,48 @@
 
 .topic-content {
 	color: var(--text-normal);
-	white-space: pre-wrap;
 	word-break: break-word;
 }
 
-.topic-content ul,
-.topic-content ol {
-	margin: 0;
-	padding-left: 1.5em;
+.topic-lines-container .topic-content {
+	line-height: 1.4 !important;
 }
 
-.topic-content li {
+.topic-lines-container .topic-content p {
+	margin: 0 !important;
+}
+
+.topic-lines-container .topic-content ul,
+.topic-lines-container .topic-content ol {
+	margin: 0 !important;
+	padding-left: 1.5em !important;
+}
+
+.topic-lines-container .topic-content ul.contains-task-list {
+	padding-left: 0 !important;
+	margin: 0 !important;
+}
+
+.topic-lines-container .topic-content li {
 	list-style: inherit;
+	margin: 0 !important;
+	padding: 0 !important;
+}
+
+.topic-lines-container .topic-content li.task-list-item {
+	list-style: none;
+	margin: 0 !important;
+	padding: 0 !important;
+	min-height: 0 !important;
+}
+
+.topic-lines-container .topic-content li.task-list-item ul {
+	margin: 0 !important;
+	padding-left: 1.5em !important;
+}
+
+.topic-lines-container .topic-content .task-list-item-checkbox {
+	margin: 0 4px 0 0 !important;
 }
 
 .topic-file-info {
