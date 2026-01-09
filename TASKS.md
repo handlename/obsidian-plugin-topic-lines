@@ -65,7 +65,7 @@ frontmatterから情報を取得し、トピックに表示する機能を実装
   - 詳細: `src/topic-view.ts` の `renderTopicItem()` メソッドを拡張し、設定されたキーのfrontmatter値を `.topic-frontmatter` 要素として表示する
   - 完了条件: 設定でキーを指定すると、各トピックに該当するfrontmatter値が「キー: 値」形式で表示される
 
-- [ ] T-3.4: Frontmatter表示用スタイルの追加
+- [x] T-3.4: Frontmatter表示用スタイルの追加
   - 目的: frontmatter情報を視覚的に区別できるスタイルを提供する
   - 詳細: `styles.css` に `.topic-frontmatter`、`.topic-frontmatter-item`、`.topic-frontmatter-key`、`.topic-frontmatter-value` のスタイルを追加する
   - 完了条件: frontmatter情報がタグ風の見た目で表示され、ライト/ダークテーマ両方で適切に表示される

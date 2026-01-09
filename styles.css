@@ -89,6 +89,28 @@
 	margin: 0 4px 0 0 !important;
 }
 
+.topic-frontmatter {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 8px;
+	margin-top: 4px;
+}
+
+.topic-frontmatter-item {
+	font-size: 0.85em;
+	background-color: var(--background-secondary);
+	padding: 1px 6px;
+	border-radius: 4px;
+}
+
+.topic-frontmatter-key {
+	color: var(--text-faint);
+}
+
+.topic-frontmatter-value {
+	color: var(--text-muted);
+}
+
 .topic-file-info {
 	font-size: 0.85em;
 	color: var(--text-muted);
