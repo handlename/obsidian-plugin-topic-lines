@@ -465,8 +465,257 @@ src/
 
 ---
 
-## 14. 変更履歴
+## 14. CI/CD設計
+
+### 14.1 概要
+
+GitHub Actionsを用いた自動リリースパイプラインを構築する。tagprによるバージョン管理とリリースPR自動生成を行い、BRAT（Beta Reviewers Auto-update Tool）に対応したリリースを実現する。
+
+### 14.2 採用技術
+
+| 技術 | 選定理由 |
+|------|----------|
+| tagpr | リリースPR自動生成、セマンティックバージョニング、タグ・GitHubリリース自動作成 |
+| GitHub Actions | GitHub統合、無料枠あり、tagprとの相性 |
+| GitHub CLI (gh) | リリースアセットのアップロードに使用、Actions環境で標準利用可能 |
+
+### 14.3 不採用技術と理由
+
+| 技術 | 不採用理由 |
+|------|-----------|
+| release-it | tagprと比較して設定が複雑、既存リポジトリでtagprの実績あり |
+| semantic-release | Node.js依存が重い、tagprで十分な機能を持つ |
+| 手動リリース | ヒューマンエラーのリスク、リリース頻度の低下 |
+
+### 14.4 BRAT対応要件
+
+BRAT（Obsidian42-brat）はベータ版プラグインの配布・自動更新を可能にするツールである。対応には以下が必要:
+
+| 要件 | 対応 |
+|------|------|
+| GitHubリリース | tagprがドラフトリリースを作成、ワークフローで公開 |
+| manifest.json | リリースアセットとしてアップロード |
+| main.js | ビルド成果物をリリースアセットとしてアップロード |
+| styles.css | リリースアセットとしてアップロード |
+| manifest-beta.json | ベータ版用マニフェスト（オプション、将来対応） |
+
+### 14.5 ファイル構成
+
+```
+.github/
+└── workflows/
+    ├── lint.yml      # 既存: ESLintによるコードチェック
+    └── tagpr.yml     # 新規: tagprによるリリース管理
+.tagpr                # 新規: tagpr設定ファイル
+manifest.json         # 既存: Obsidianプラグインマニフェスト
+manifest-beta.json    # 新規: BRAT用ベータマニフェスト（オプション）
+```
+
+### 14.6 .tagpr設定
+
+```gitconfig
+[tagpr]
+    releaseBranch = main
+    versionFile = manifest.json,package.json,versions.json
+    vPrefix = false
+    changelog = true
+    release = draft
+    majorLabels = major
+    minorLabels = minor
+    command = npm run build
+```
+
+**設定項目の説明**:
+
+| 項目 | 値 | 理由 |
+|------|-----|------|
+| releaseBranch | main | メインブランチからリリース |
+| versionFile | manifest.json,package.json,versions.json | Obsidianプラグインのバージョン管理に必要なファイル群 |
+| vPrefix | false | Obsidianコミュニティプラグインはvプレフィックスなしのタグを推奨 |
+| changelog | true | CHANGELOG.mdの自動更新を有効化 |
+| release | draft | イミュータブルリリースのためドラフトで作成 |
+| majorLabels | major | メジャーバージョンアップ用ラベル |
+| minorLabels | minor | マイナーバージョンアップ用ラベル |
+| command | npm run build | リリース前にビルドを実行 |
+
+### 14.7 GitHub Actionsワークフロー
+
+#### tagpr.yml
+
+```yaml
+name: tagpr
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+
+jobs:
+  tagpr:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tagpr.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Run tagpr
+        id: tagpr
+        uses: Songmu/tagpr@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Setup Node.js
+        if: steps.tagpr.outputs.tag != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        if: steps.tagpr.outputs.tag != ''
+        run: npm ci
+
+      - name: Build plugin
+        if: steps.tagpr.outputs.tag != ''
+        run: npm run build
+
+      - name: Upload release assets
+        if: steps.tagpr.outputs.tag != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          gh release upload ${{ steps.tagpr.outputs.tag }} \
+            main.js \
+            manifest.json \
+            styles.css \
+            --clobber
+
+      - name: Publish release
+        if: steps.tagpr.outputs.tag != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          gh release edit ${{ steps.tagpr.outputs.tag }} --draft=false
+```
+
+**ワークフローの流れ**:
+
+```
+1. mainブランチへのpush
+   ↓
+2. tagprがリリースPRを作成/更新
+   - 未リリースの変更がある場合のみ
+   - manifest.json, package.json, versions.jsonのバージョンを更新
+   - CHANGELOG.mdを更新
+   ↓
+3. リリースPRがマージされる（手動）
+   ↓
+4. tagprがタグを作成し、ドラフトリリースを生成
+   ↓
+5. Node.jsセットアップ、依存関係インストール
+   ↓
+6. npm run buildでプラグインをビルド
+   ↓
+7. gh release uploadでリリースアセットをアップロード
+   - main.js
+   - manifest.json
+   - styles.css
+   ↓
+8. gh release editでドラフトを公開
+```
+
+### 14.8 リリースアセット
+
+| ファイル | 必須 | 説明 |
+|----------|------|------|
+| main.js | ◯ | ビルドされたプラグイン本体 |
+| manifest.json | ◯ | プラグインメタデータ |
+| styles.css | ◯ | プラグインスタイル |
+| manifest-beta.json | △ | ベータ版用マニフェスト（将来対応） |
+
+### 14.9 バージョン管理戦略
+
+| ラベル | バージョン変更 | 使用例 |
+|--------|---------------|--------|
+| major | x.0.0 | 破壊的変更、APIの大幅変更 |
+| minor | 0.x.0 | 新機能追加、後方互換性あり |
+| （なし） | 0.0.x | バグ修正、軽微な改善 |
+
+### 14.10 セットアップ手順
+
+1. **GH_PATの作成と登録**:
+   - GitHubで Personal Access Token (Classic) を作成
+   - 権限: `repo`, `workflow`
+   - リポジトリの Settings → Secrets and variables → Actions に `GH_PAT` として登録
+
+2. **リポジトリ設定**:
+   - Settings → Actions → General → Workflow permissions
+   - "Allow GitHub Actions to create and approve pull requests" を有効化
+
+3. **設定ファイルの作成**:
+   - `.tagpr` ファイルを作成
+   - `.github/workflows/tagpr.yml` を作成
+
+4. **動作確認**:
+   - mainブランチにコミットをpush
+   - tagprがリリースPRを作成することを確認
+   - PRをマージし、タグとリリースが作成されることを確認
+
+### 14.11 versions.jsonの更新
+
+tagprはversionFileに指定されたファイル内のバージョン文字列を更新する。`versions.json`はObsidian固有の形式（バージョンマッピング）のため、特別な対応が必要:
+
+**現在の形式**:
+```json
+{
+  "1.0.0": "0.15.0"
+}
+```
+
+**対応方針**:
+
+tagprはversions.json内の最初に見つかったセマンティックバージョン文字列を更新する。これにより新バージョンのキーが追加される形になるため、基本的にはそのまま動作する。
+
+ただし、既存の`version-bump.mjs`は`npm_package_version`環境変数に依存しており、tagprのワークフローでは使用しない。tagprが直接ファイルを更新する方式を採用する。
+
+**注意点**:
+- tagprはJSON/JSONCファイル内のセマンティックバージョン文字列を検出して更新する
+- versions.jsonはキーがバージョン、値がminAppVersionの形式
+- tagprはキー側のバージョンを更新し、新しいエントリを追加する動作となる
+- 必要に応じてリリースPRで手動調整が可能
+
+### 14.12 manifest-beta.json（将来対応）
+
+BRATはベータ版プラグインの配布に`manifest-beta.json`を使用できる。現時点では実装しないが、将来的に以下の対応が可能:
+
+```json
+{
+  "id": "topic-lines",
+  "name": "Topic Lines",
+  "version": "1.1.0-beta.1",
+  "minAppVersion": "0.15.0",
+  "description": "Display any lines from your notes as topics in the sidebar for quick access and navigation.",
+  "author": "handlename",
+  "authorUrl": "https://github.com/handlename",
+  "isDesktopOnly": false
+}
+```
+
+**ベータリリースフロー**（将来対応）:
+1. 別ブランチ（例: `beta`）からのリリース
+2. manifest-beta.jsonのバージョン更新
+3. リリースアセットにmanifest-beta.jsonを追加
+
+---
+
+## 15. 変更履歴
 
 | 日付 | バージョン | 変更内容 | 作成者 |
 |------|-----------|----------|--------|
 | 2026-01-09 | 1.0 | 初版作成 | - |
+| 2026-01-09 | 1.1 | CI/CD設計（tagpr + BRAT対応）を追加 | - |
