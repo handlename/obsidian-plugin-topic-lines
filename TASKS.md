@@ -76,7 +76,7 @@ frontmatterから情報を取得し、トピックに表示する機能を実装
 
 設定に基づいてファイル名の表示・非表示を制御する。
 
-- [ ] T-4.1: ファイル名表示の条件付き実装
+- [x] T-4.1: ファイル名表示の条件付き実装
   - 目的: 設定に基づいてファイル名表示を制御する
   - 詳細: `src/topic-view.ts` の `renderTopicItem()` で、`plugin.settings.showFileName` が `true` の場合のみファイル名を表示するように変更する
   - 完了条件: `showFileName` が `false`（デフォルト）のときファイル名が非表示、`true` のとき表示される
