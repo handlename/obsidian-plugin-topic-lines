@@ -3,10 +3,12 @@ import {
 	ItemView,
 	MarkdownRenderer,
 	MarkdownView,
+	TFile,
 	WorkspaceLeaf,
 } from "obsidian";
 import type TopicLinePlugin from "./main";
 import { Topic } from "./types";
+import { removeBlockIdFromFile } from "./commands";
 
 export const VIEW_TYPE_TOPIC_LINES = "topic-lines-view";
 
@@ -151,7 +153,7 @@ export class TopicView extends ItemView {
 
 		deleteBtn.addEventListener("click", (e) => {
 			e.stopPropagation();
-			void this.handleDelete(topic.id);
+			void this.handleDelete(topic);
 		});
 
 		// ドラッグ＆ドロップ
@@ -193,8 +195,17 @@ export class TopicView extends ItemView {
 	/**
 	 * 削除ボタンクリック時の処理
 	 */
-	private async handleDelete(id: string): Promise<void> {
-		await this.plugin.topicStore.removeTopic(id);
+	private async handleDelete(topic: Topic): Promise<void> {
+		// ファイルからブロックIDを削除
+		const file = this.plugin.app.vault.getAbstractFileByPath(
+			topic.filePath,
+		);
+		if (file instanceof TFile) {
+			await removeBlockIdFromFile(this.plugin, file, topic.blockId);
+		}
+
+		// トピックを削除
+		await this.plugin.topicStore.removeTopic(topic.id);
 	}
 
 	/**

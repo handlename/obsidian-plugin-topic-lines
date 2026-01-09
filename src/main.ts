@@ -3,7 +3,7 @@ import { DEFAULT_SETTINGS, TopicLineSettings } from "./settings";
 import { TopicStore } from "./topic-store";
 import { TopicView, VIEW_TYPE_TOPIC_LINES } from "./topic-view";
 import { registerCommands } from "./commands";
-import { debounce } from "./utils";
+import { debounce, findLineByBlockId, removeBlockIdFromLine } from "./utils";
 
 export default class TopicLinePlugin extends Plugin {
 	settings: TopicLineSettings;
@@ -56,7 +56,7 @@ export default class TopicLinePlugin extends Plugin {
 	 * ファイルイベントを登録する
 	 */
 	private registerFileEvents(): void {
-		// ファイル変更時の内容追従（デバウンス付き）
+		// ファイル変更時の内容追従（デバウンス付き、ブロックIDベース）
 		const handleModify = debounce(async (file: TAbstractFile) => {
 			if (!(file instanceof TFile)) return;
 
@@ -67,15 +67,44 @@ export default class TopicLinePlugin extends Plugin {
 			const lines = content.split("\n");
 
 			for (const topic of topics) {
-				const startLine = Math.min(topic.startLine, lines.length - 1);
-				const endLine = Math.min(topic.endLine, lines.length - 1);
-				const newContent = lines
-					.slice(startLine, endLine + 1)
-					.join("\n");
+				// ブロックIDで現在の行番号を検索
+				const currentStartLine = findLineByBlockId(
+					lines,
+					topic.blockId,
+				);
 
-				if (newContent !== topic.originalContent) {
-					await this.topicStore.updateTopicContent(
+				if (currentStartLine === -1) {
+					// ブロックIDが見つからない場合はスキップ（削除された可能性）
+					continue;
+				}
+
+				// トピックの範囲を計算（lineCountを使用）
+				const currentEndLine = Math.min(
+					currentStartLine + topic.lineCount - 1,
+					lines.length - 1,
+				);
+
+				// 新しい内容を取得（ブロックIDを除去して表示用に整形）
+				const contentLines = lines.slice(
+					currentStartLine,
+					currentEndLine + 1,
+				);
+				const firstLine = contentLines[0];
+				if (firstLine !== undefined) {
+					contentLines[0] = removeBlockIdFromLine(firstLine);
+				}
+				const newContent = contentLines.join("\n");
+
+				// 行番号または内容が変わった場合のみ更新
+				if (
+					currentStartLine !== topic.startLine ||
+					currentEndLine !== topic.endLine ||
+					newContent !== topic.originalContent
+				) {
+					await this.topicStore.updateTopicPosition(
 						topic.id,
+						currentStartLine,
+						currentEndLine,
 						newContent,
 					);
 				}

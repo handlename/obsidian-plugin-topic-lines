@@ -1,6 +1,6 @@
 import { Plugin } from "obsidian";
 import { Topic, TopicData } from "./types";
-import { generateUUID } from "./utils";
+import { generateUUID, generateBlockId } from "./utils";
 
 /** トピック数の上限 */
 const MAX_TOPICS = 20;
@@ -37,16 +37,19 @@ export class TopicStore {
 	 * @returns 追加されたトピック、または上限超過時はnull
 	 */
 	async addTopic(
-		topicData: Omit<Topic, "id" | "createdAt">,
+		topicData: Omit<Topic, "id" | "createdAt" | "blockId" | "lineCount">,
 	): Promise<Topic | null> {
 		if (this.data.topics.length >= MAX_TOPICS) {
 			return null;
 		}
 
+		const lineCount = topicData.endLine - topicData.startLine + 1;
 		const topic: Topic = {
 			...topicData,
 			id: generateUUID(),
 			createdAt: new Date().toISOString(),
+			blockId: generateBlockId(),
+			lineCount,
 		};
 
 		this.data.topics.push(topic);
@@ -97,6 +100,25 @@ export class TopicStore {
 	async updateTopicContent(id: string, content: string): Promise<void> {
 		const topic = this.data.topics.find((t) => t.id === id);
 		if (topic) {
+			topic.originalContent = content;
+			await this.save();
+			this.notifyChange();
+		}
+	}
+
+	/**
+	 * トピックの行番号と内容を更新する（ブロックID追跡結果反映用）
+	 */
+	async updateTopicPosition(
+		id: string,
+		startLine: number,
+		endLine: number,
+		content: string,
+	): Promise<void> {
+		const topic = this.data.topics.find((t) => t.id === id);
+		if (topic) {
+			topic.startLine = startLine;
+			topic.endLine = endLine;
 			topic.originalContent = content;
 			await this.save();
 			this.notifyChange();

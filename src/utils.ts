@@ -12,6 +12,67 @@ export function generateUUID(): string {
 }
 
 /**
+ * トピック用のブロックIDを生成する（Obsidian標準形式）
+ * 形式: topic-{6文字のランダム英数字}
+ */
+export function generateBlockId(): string {
+	const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+	let result = "topic-";
+	for (let i = 0; i < 6; i++) {
+		result += chars.charAt(Math.floor(Math.random() * chars.length));
+	}
+	return result;
+}
+
+/**
+ * ブロックIDのパターン（行末の ^block-id を検出）
+ */
+export const BLOCK_ID_PATTERN = / \^([\w-]+)$/;
+
+/**
+ * 行からブロックIDを抽出する
+ * @returns ブロックID（^なし）、見つからない場合はnull
+ */
+export function extractBlockId(line: string): string | null {
+	const match = line.match(BLOCK_ID_PATTERN);
+	return match?.[1] ?? null;
+}
+
+/**
+ * 行にブロックIDを追加する
+ */
+export function addBlockIdToLine(line: string, blockId: string): string {
+	const existingId = extractBlockId(line);
+	if (existingId) {
+		return line.replace(BLOCK_ID_PATTERN, ` ^${blockId}`);
+	}
+	return `${line} ^${blockId}`;
+}
+
+/**
+ * 行からブロックIDを削除する
+ */
+export function removeBlockIdFromLine(line: string): string {
+	return line.replace(BLOCK_ID_PATTERN, "");
+}
+
+/**
+ * ファイル内容から指定ブロックIDを持つ行のインデックスを検索する
+ * @returns 行インデックス（0-indexed）、見つからない場合は-1
+ */
+export function findLineByBlockId(lines: string[], blockId: string): number {
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i];
+		if (line === undefined) continue;
+		const lineBlockId = extractBlockId(line);
+		if (lineBlockId === blockId) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+/**
  * 指定パスのファイルが存在するか確認する
  */
 export function fileExists(app: App, path: string): boolean {

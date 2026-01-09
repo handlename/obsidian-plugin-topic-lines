@@ -1,6 +1,53 @@
-import { Editor, MarkdownView, Notice } from "obsidian";
+import { Editor, MarkdownView, Notice, TFile } from "obsidian";
 import type TopicLinePlugin from "./main";
 import { VIEW_TYPE_TOPIC_LINES } from "./topic-view";
+import {
+	addBlockIdToLine,
+	removeBlockIdFromLine,
+	findLineByBlockId,
+} from "./utils";
+
+/**
+ * ファイルの指定行にブロックIDを挿入する
+ */
+async function insertBlockIdToFile(
+	plugin: TopicLinePlugin,
+	file: TFile,
+	lineIndex: number,
+	blockId: string,
+): Promise<void> {
+	const content = await plugin.app.vault.read(file);
+	const lines = content.split("\n");
+
+	const targetLine = lines[lineIndex];
+	if (
+		lineIndex >= 0 &&
+		lineIndex < lines.length &&
+		targetLine !== undefined
+	) {
+		lines[lineIndex] = addBlockIdToLine(targetLine, blockId);
+		await plugin.app.vault.modify(file, lines.join("\n"));
+	}
+}
+
+/**
+ * ファイルから指定ブロックIDを削除する
+ */
+export async function removeBlockIdFromFile(
+	plugin: TopicLinePlugin,
+	file: TFile,
+	blockId: string,
+): Promise<void> {
+	const content = await plugin.app.vault.read(file);
+	const lines = content.split("\n");
+
+	const lineIndex = findLineByBlockId(lines, blockId);
+	const targetLine = lines[lineIndex];
+	if (lineIndex >= 0 && targetLine !== undefined) {
+		lines[lineIndex] = removeBlockIdFromLine(targetLine);
+		await plugin.app.vault.modify(file, lines.join("\n"));
+	}
+}
 
 /**
  * プラグインのコマンドを登録する
@@ -34,6 +81,13 @@ export function registerCommands(plugin: TopicLinePlugin): void {
 			});
 
 			if (topic) {
+				// ファイルの開始行にブロックIDを挿入
+				await insertBlockIdToFile(
+					plugin,
+					file,
+					from.line,
+					topic.blockId,
+				);
 				new Notice("Topic registered");
 			} else {
 				new Notice("Cannot add topic: maximum limit (20) reached");

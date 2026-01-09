@@ -19,6 +19,12 @@ export interface Topic {
 
 	/** 登録日時（ISO 8601形式） */
 	createdAt: string;
+
+	/** ブロックID（Obsidian標準形式 ^block-id、開始行に付与） */
+	blockId: string;
+
+	/** トピックの行数（endLine - startLine + 1） */
+	lineCount: number;
 }
 
 /**
