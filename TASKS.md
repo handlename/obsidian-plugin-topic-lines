@@ -60,7 +60,7 @@ frontmatterから情報を取得し、トピックに表示する機能を実装
   - 詳細: `src/frontmatter.ts` に `parseFrontmatterKeys()` 関数を実装し、カンマ区切りと改行区切りの両方に対応する
   - 完了条件: `"status, tags\npriority"` のような入力が `["status", "tags", "priority"]` に変換される
 
-- [ ] T-3.3: トピックビューへのFrontmatter表示追加
+- [x] T-3.3: トピックビューへのFrontmatter表示追加
   - 目的: トピック一覧にfrontmatter情報を表示する
   - 詳細: `src/topic-view.ts` の `renderTopicItem()` メソッドを拡張し、設定されたキーのfrontmatter値を `.topic-frontmatter` 要素として表示する
   - 完了条件: 設定でキーを指定すると、各トピックに該当するfrontmatter値が「キー: 値」形式で表示される

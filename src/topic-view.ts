@@ -9,6 +9,7 @@ import {
 import type TopicLinePlugin from "./main";
 import { Topic } from "./types";
 import { removeBlockIdFromFile } from "./commands";
+import { getFrontmatterValues } from "./frontmatter";
 
 export const VIEW_TYPE_TOPIC_LINES = "topic-lines-view";
 
@@ -117,12 +118,17 @@ export class TopicView extends ItemView {
 			this.renderComponent,
 		);
 
-		// ファイル情報
-		const fileName = topic.filePath.split("/").pop() ?? topic.filePath;
-		contentWrapper.createDiv({
-			cls: "topic-file-info",
-			text: fileName,
-		});
+		// Frontmatter情報
+		this.renderFrontmatter(contentWrapper, topic.filePath);
+
+		// ファイル情報（設定に応じて表示）
+		if (this.plugin.settings.showFileName) {
+			const fileName = topic.filePath.split("/").pop() ?? topic.filePath;
+			contentWrapper.createDiv({
+				cls: "topic-file-info",
+				text: fileName,
+			});
+		}
 
 		// アラート（ファイル不在時）
 		if (!fileExists) {
@@ -158,6 +164,42 @@ export class TopicView extends ItemView {
 
 		// ドラッグ＆ドロップ
 		this.setupDragAndDrop(itemEl, index);
+	}
+
+	/**
+	 * Frontmatter情報を描画する
+	 */
+	private renderFrontmatter(container: HTMLElement, filePath: string): void {
+		const keys = this.plugin.settings.frontmatterKeys;
+		if (keys.length === 0) {
+			return;
+		}
+
+		const values = getFrontmatterValues(this.plugin.app, filePath, keys);
+		if (values.size === 0) {
+			return;
+		}
+
+		const frontmatterEl = container.createDiv({
+			cls: "topic-frontmatter",
+		});
+
+		for (const key of keys) {
+			const value = values.get(key);
+			if (value) {
+				const itemEl = frontmatterEl.createSpan({
+					cls: "topic-frontmatter-item",
+				});
+				itemEl.createSpan({
+					cls: "topic-frontmatter-key",
+					text: `${key}: `,
+				});
+				itemEl.createSpan({
+					cls: "topic-frontmatter-value",
+					text: value,
+				});
+			}
+		}
 	}
 
 	/**
