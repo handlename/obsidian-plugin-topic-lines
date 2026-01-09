@@ -1,5 +1,6 @@
 import { Plugin, TAbstractFile, TFile } from "obsidian";
 import { DEFAULT_SETTINGS, TopicLineSettings } from "./settings";
+import { TopicLineSettingTab } from "./settings-tab";
 import { TopicStore } from "./topic-store";
 import { TopicView, VIEW_TYPE_TOPIC_LINES } from "./topic-view";
 import { registerCommands } from "./commands";
@@ -24,6 +25,9 @@ export default class TopicLinePlugin extends Plugin {
 
 		// コマンドの登録
 		registerCommands(this);
+
+		// 設定タブの登録
+		this.addSettingTab(new TopicLineSettingTab(this.app, this));
 
 		// レイアウト準備完了後にイベント登録
 		this.app.workspace.onLayoutReady(() => {

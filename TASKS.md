@@ -39,7 +39,7 @@
   - 詳細: トグルスイッチを使用し、変更時に即座に設定に反映・保存する
   - 完了条件: 設定画面でトグルを操作でき、値が `plugin.settings.showFileName` に保存される
 
-- [ ] T-2.4: 設定タブの登録
+- [x] T-2.4: 設定タブの登録
   - 目的: プラグイン起動時に設定タブをObsidianに登録する
   - 詳細: `src/main.ts` の `onload()` で `this.addSettingTab()` を呼び出す
   - 完了条件: Obsidianの設定画面に「Topic Lines」タブが表示される
