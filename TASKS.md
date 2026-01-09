@@ -24,7 +24,7 @@
 
 ユーザーが設定を変更できるUIを実装する。
 
-- [ ] T-2.1: 設定タブの新規作成
+- [x] T-2.1: 設定タブの新規作成
   - 目的: Obsidianの設定画面にプラグイン設定タブを追加する
   - 詳細: `src/settings-tab.ts` を新規作成し、`PluginSettingTab` を継承した `TopicLineSettingTab` クラスを実装する
   - 完了条件: `TopicLineSettingTab` クラスが作成され、空の `display()` メソッドが実装されている
