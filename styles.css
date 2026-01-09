@@ -1,8 +1,88 @@
-/*
+.topic-lines-container {
+	padding: 8px;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.topic-lines-empty {
+	color: var(--text-muted);
+	font-style: italic;
+	padding: 16px 8px;
+}
 
-If your plugin does not need CSS, delete this file.
+.topic-item {
+	display: flex;
+	align-items: flex-start;
+	padding: 8px;
+	margin-bottom: 4px;
+	border-radius: 4px;
+	cursor: pointer;
+	transition: background-color 0.1s ease;
+}
 
-*/
+.topic-item:hover {
+	background-color: var(--interactive-hover);
+}
+
+.topic-item.dragging {
+	opacity: 0.5;
+}
+
+.topic-item.drag-over {
+	border-top: 2px solid var(--interactive-accent);
+}
+
+.topic-number {
+	flex-shrink: 0;
+	width: 24px;
+	font-weight: 600;
+	color: var(--text-muted);
+}
+
+.topic-content-wrapper {
+	flex: 1;
+	min-width: 0;
+	margin-right: 8px;
+}
+
+.topic-content {
+	color: var(--text-normal);
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.topic-file-info {
+	font-size: 0.85em;
+	color: var(--text-muted);
+	margin-top: 4px;
+}
+
+.topic-alert {
+	color: var(--text-warning);
+	font-size: 0.85em;
+	margin-top: 4px;
+}
+
+.topic-actions {
+	flex-shrink: 0;
+	opacity: 0;
+	transition: opacity 0.1s ease;
+}
+
+.topic-item:hover .topic-actions {
+	opacity: 1;
+}
+
+.topic-delete-btn {
+	background: none;
+	border: none;
+	color: var(--text-muted);
+	cursor: pointer;
+	padding: 2px 6px;
+	border-radius: 4px;
+	font-size: 16px;
+	line-height: 1;
+}
+
+.topic-delete-btn:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}

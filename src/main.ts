@@ -1,99 +1,110 @@
-import {App, Editor, MarkdownView, Modal, Notice, Plugin} from 'obsidian';
-import {DEFAULT_SETTINGS, MyPluginSettings, SampleSettingTab} from "./settings";
+import { Plugin, TAbstractFile, TFile } from "obsidian";
+import { DEFAULT_SETTINGS, TopicLineSettings } from "./settings";
+import { TopicStore } from "./topic-store";
+import { TopicView, VIEW_TYPE_TOPIC_LINES } from "./topic-view";
+import { registerCommands } from "./commands";
+import { debounce } from "./utils";
 
-// Remember to rename these classes and interfaces!
+export default class TopicLinePlugin extends Plugin {
+	settings: TopicLineSettings;
+	topicStore: TopicStore;
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
-
-	async onload() {
+	async onload(): Promise<void> {
 		await this.loadSettings();
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
+		// TopicStore の初期化
+		this.topicStore = new TopicStore(this);
+		await this.topicStore.load();
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
+		// ビューの登録
+		this.registerView(
+			VIEW_TYPE_TOPIC_LINES,
+			(leaf) => new TopicView(leaf, this),
+		);
 
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				editor.replaceSelection('Sample editor command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
+		// コマンドの登録
+		registerCommands(this);
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
+		// レイアウト準備完了後にイベント登録
+		this.app.workspace.onLayoutReady(() => {
+			this.registerFileEvents();
+		});
+	}
+
+	onunload(): void {
+		// クリーンアップは自動的に行われる
+	}
+
+	async loadSettings(): Promise<void> {
+		const loaded = (await this.loadData()) as
+			| { settings?: TopicLineSettings }
+			| null
+			| undefined;
+		this.settings = Object.assign(
+			{},
+			DEFAULT_SETTINGS,
+			loaded?.settings ?? {},
+		);
+	}
+
+	async saveSettings(): Promise<void> {
+		const data = (await this.loadData()) as Record<string, unknown> | null;
+		await this.saveData({ ...data, settings: this.settings });
+	}
+
+	/**
+	 * ファイルイベントを登録する
+	 */
+	private registerFileEvents(): void {
+		// ファイル変更時の内容追従（デバウンス付き）
+		const handleModify = debounce(async (file: TAbstractFile) => {
+			if (!(file instanceof TFile)) return;
+
+			const topics = this.topicStore.getTopicsByFilePath(file.path);
+			if (topics.length === 0) return;
+
+			const content = await this.app.vault.read(file);
+			const lines = content.split("\n");
+
+			for (const topic of topics) {
+				const startLine = Math.min(topic.startLine, lines.length - 1);
+				const endLine = Math.min(topic.endLine, lines.length - 1);
+				const newContent = lines
+					.slice(startLine, endLine + 1)
+					.join("\n");
+
+				if (newContent !== topic.originalContent) {
+					await this.topicStore.updateTopicContent(
+						topic.id,
+						newContent,
+					);
 				}
-				return false;
 			}
-		});
+		}, 300);
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.registerEvent(this.app.vault.on("modify", handleModify));
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			new Notice("Click");
-		});
+		// ファイル削除時（ビューの再描画で警告表示）
+		this.registerEvent(
+			this.app.vault.on("delete", () => {
+				// TopicView が onChange で再描画するため、通知のみ
+				this.topicStore["notifyChange"]();
+			}),
+		);
 
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+		// ファイルリネーム時のパス更新
+		this.registerEvent(
+			this.app.vault.on("rename", async (file, oldPath) => {
+				if (!(file instanceof TFile)) return;
 
-	}
-
-	onunload() {
-	}
-
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<MyPluginSettings>);
-	}
-
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		let {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
+				const topics = this.topicStore.getTopicsByFilePath(oldPath);
+				for (const topic of topics) {
+					await this.topicStore.updateTopicFilePath(
+						topic.id,
+						file.path,
+					);
+				}
+			}),
+		);
 	}
 }
