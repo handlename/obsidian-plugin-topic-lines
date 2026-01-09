@@ -1,6 +1,17 @@
 import { App, TFile } from "obsidian";
 
 /**
+ * 設定文字列をキー配列にパースする
+ * カンマ区切りと改行区切りの両方に対応
+ */
+export function parseFrontmatterKeys(input: string): string[] {
+	return input
+		.split(/[,\n]/)
+		.map((key) => key.trim())
+		.filter((key) => key.length > 0);
+}
+
+/**
  * frontmatter値を表示用文字列にフォーマットする
  * 配列はカンマ区切りで連結
  */

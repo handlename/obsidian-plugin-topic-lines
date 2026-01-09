@@ -55,7 +55,7 @@ frontmatterから情報を取得し、トピックに表示する機能を実装
   - 詳細: `src/frontmatter.ts` を新規作成し、`getFrontmatterValues()` と `formatFrontmatterValue()` 関数を実装する。Obsidianの `metadataCache` を使用してfrontmatterを取得する
   - 完了条件: 指定したキーの値を取得でき、配列値はカンマ区切り文字列に変換される
 
-- [ ] T-3.2: 設定文字列パーサーの実装
+- [x] T-3.2: 設定文字列パーサーの実装
   - 目的: 設定画面で入力された文字列をキー配列に変換する
   - 詳細: `src/frontmatter.ts` に `parseFrontmatterKeys()` 関数を実装し、カンマ区切りと改行区切りの両方に対応する
   - 完了条件: `"status, tags\npriority"` のような入力が `["status", "tags", "priority"]` に変換される

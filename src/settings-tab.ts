@@ -1,16 +1,6 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type TopicLinePlugin from "./main";
-
-/**
- * 設定文字列をキー配列にパースする
- * カンマ区切りと改行区切りの両方に対応
- */
-function parseFrontmatterKeys(input: string): string[] {
-	return input
-		.split(/[,\n]/)
-		.map((key) => key.trim())
-		.filter((key) => key.length > 0);
-}
+import { parseFrontmatterKeys } from "./frontmatter";
 
 /**
  * キー配列を設定文字列に変換する
