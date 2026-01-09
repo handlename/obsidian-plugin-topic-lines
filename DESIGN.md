@@ -2,7 +2,8 @@
 
 ## 1. 概要
 
-本ドキュメントは、REQUIREMENTS.mdに定義された要件に基づき、Obsidian Plugin Topic Linesの技術設計を記述する。
+本文書は、REQUIREMENTS.md で定義された要件を実現するための技術設計を記述する。
+追加要件（FR-010〜FR-012）を中心に、設定画面の実装とfrontmatter/ファイル名表示機能の設計を行う。
 
 ---
 
@@ -10,712 +11,361 @@
 
 ### 2.1 採用技術
 
-| 技術 | バージョン/詳細 | 選定理由 |
-|------|----------------|----------|
-| TypeScript | ^5.8.3 | 型安全性の確保、IDEサポート、Obsidian公式推奨 |
-| esbuild | 0.25.5 | 高速ビルド、Obsidianサンプルプラグイン標準構成 |
-| npm | - | パッケージ管理、サンプルプラグイン標準構成 |
-| Obsidian API | latest | プラグイン開発に必須 |
-| ESLint | 9.x | コード品質維持、eslint-plugin-obsidianmd による Obsidian 固有ルール適用 |
+| カテゴリ | 技術 | バージョン | 選定理由 |
+|---|---|---|---|
+| 言語 | TypeScript | 5.x | 型安全性、Obsidian公式サンプル準拠 |
+| ビルドツール | esbuild | 0.x | 高速ビルド、Obsidian公式サンプル準拠 |
+| パッケージマネージャー | npm | - | プロジェクト既存構成 |
+| Linter | ESLint | - | コード品質維持、Obsidian専用プラグイン対応 |
+| UI | Obsidian API (ItemView, PluginSettingTab) | - | プラットフォーム標準、テーマ互換性確保 |
 
-### 2.2 不採用技術と理由
+### 2.2 不採用技術
 
 | 技術 | 不採用理由 |
-|------|-----------|
-| React/Preact | サイドバービューはシンプルなリスト表示のみ。Obsidian標準のDOM APIで十分であり、追加の依存関係とバンドルサイズ増加を避ける |
-| Rollup | esbuildがサンプルプラグインの標準であり、十分な機能を持つ。変更の必要なし |
-| yarn/pnpm | npmがサンプルプラグインの標準。互換性を優先 |
-| Svelte | 学習コストと依存関係の増加に対し、本プラグインのUI複雑度では不要 |
-| CSS-in-JS | styles.cssによる標準的なスタイリングで十分。Obsidianテーマとの互換性を維持しやすい |
+|---|---|
+| React/Vue | Obsidian標準APIで十分、追加依存を避ける |
+| Rollup | esbuildで十分、既存構成を維持 |
+| Tailwind CSS | Obsidianテーマ変数を使用するため不要 |
 
 ---
 
-## 3. アーキテクチャ
+## 3. モジュール構成
 
-### 3.1 モジュール構成
+### 3.1 現行構成
 
 ```
 src/
-├── main.ts              # プラグインエントリポイント（ライフサイクル管理のみ）
-├── types.ts             # 型定義（Topic, TopicData）
-├── settings.ts          # 設定インターフェース、デフォルト値、設定タブ
-├── topic-store.ts       # トピックデータの管理（CRUD、永続化）
-├── topic-view.ts        # サイドバービュー（ItemView継承）
-├── commands.ts          # コマンド登録（登録、ジャンプ、削除）
-└── utils.ts             # ユーティリティ関数（ファイル存在確認など）
+├── main.ts           # プラグインエントリポイント（ライフサイクル管理）
+├── settings.ts       # 設定インターフェースとデフォルト値
+├── types.ts          # 型定義（Topic, TopicData）
+├── topic-store.ts    # トピックデータ管理（CRUD・永続化）
+├── topic-view.ts     # サイドバービュー（ItemView）
+├── commands.ts       # コマンド登録
+└── utils.ts          # ユーティリティ関数
 ```
 
-### 3.2 責務分離
+### 3.2 追加・変更ファイル
 
-| モジュール | 責務 |
-|-----------|------|
-| main.ts | プラグインライフサイクル（onload/onunload）、各モジュールの初期化と登録 |
-| types.ts | データ構造の型定義 |
-| settings.ts | プラグイン設定の定義と永続化 |
-| topic-store.ts | トピックデータのCRUD操作、永続化、イベント発火 |
-| topic-view.ts | サイドバーUIのレンダリング、ユーザーインタラクション処理 |
-| commands.ts | コマンドパレットへのコマンド登録 |
-| utils.ts | 共通ユーティリティ（ファイル存在確認など） |
+| ファイル | 変更内容 |
+|---|---|
+| `src/settings.ts` | 設定項目の追加（frontmatterKeys, showFileName） |
+| `src/settings-tab.ts` | **新規**: 設定タブUI（PluginSettingTab） |
+| `src/topic-view.ts` | frontmatter表示、ファイル名表示切り替えの実装 |
+| `src/main.ts` | 設定タブの登録 |
+| `src/frontmatter.ts` | **新規**: frontmatter解析ユーティリティ |
+| `styles.css` | frontmatter表示用スタイル追加 |
 
 ---
 
-## 4. データモデル
+## 4. データモデル設計
 
-### 4.1 Topic型
+### 4.1 設定データ（TopicLineSettings）
 
 ```typescript
-interface Topic {
-  /** 一意識別子（UUID v4） */
-  id: string;
-  
-  /** 元ノートのVault内相対パス */
-  filePath: string;
-  
-  /** 登録時の開始行番号（0-indexed） */
-  startLine: number;
-  
-  /** 登録時の終了行番号（0-indexed、inclusive） */
-  endLine: number;
-  
-  /** 登録時点のテキスト内容（キャッシュ用） */
-  originalContent: string;
-  
-  /** 登録日時（ISO 8601形式） */
-  createdAt: string;
+interface TopicLineSettings {
+  /** 表示するfrontmatterキーのリスト */
+  frontmatterKeys: string[];
+
+  /** ファイル名を表示するか */
+  showFileName: boolean;
 }
+
+const DEFAULT_SETTINGS: TopicLineSettings = {
+  frontmatterKeys: [],
+  showFileName: false,
+};
 ```
 
-### 4.2 TopicData型（永続化用）
+### 4.2 永続化データ構造
+
+設定データはトピックデータとは別に保存する。現行のTopicDataとの共存を考慮し、以下の構造とする:
 
 ```typescript
-interface TopicData {
-  /** データフォーマットバージョン（将来の移行用） */
+// saveData/loadDataで保存されるデータ
+interface PluginData {
   version: 1;
-  
-  /** トピック配列（表示順） */
   topics: Topic[];
+  settings: TopicLineSettings;
 }
 ```
 
-### 4.3 設計判断
-
-- **行番号の保持**: 元ノートの行番号を保持し、ジャンプ時に使用する。ノート更新時の追従はリアルタイム監視で対応
-- **originalContentの保持**: 元ノートが編集された場合の差分検出、およびノート削除時の表示に使用
-- **UUID使用**: 並び替え・削除時の一意識別に必要。順序に依存しない識別子
-- **version フィールド**: 将来のデータ構造変更に備えたマイグレーション対応
+**移行考慮**: 既存データ（`TopicData`のみ）がある場合は、`settings`フィールドが存在しないため、デフォルト設定を適用する。
 
 ---
 
 ## 5. コンポーネント設計
 
-### 5.1 TopicLinePlugin（main.ts）
+### 5.1 設定タブ（TopicLineSettingTab）
+
+**ファイル**: `src/settings-tab.ts`
 
 ```typescript
-class TopicLinePlugin extends Plugin {
-  settings: TopicLineSettings;
-  topicStore: TopicStore;
-  
-  async onload(): Promise<void>;
-  async onunload(): Promise<void>;
-  async loadSettings(): Promise<void>;
-  async saveSettings(): Promise<void>;
+class TopicLineSettingTab extends PluginSettingTab {
+  plugin: TopicLinePlugin;
+
+  constructor(app: App, plugin: TopicLinePlugin);
+  display(): void;
 }
 ```
 
-**責務**:
-- プラグインライフサイクル管理
-- TopicStore、TopicView、コマンドの初期化
-- 設定の読み込み・保存
+**UI構成**:
 
-### 5.2 TopicStore（topic-store.ts）
+1. **Frontmatter表示キー設定**
+   - テキストエリア入力（1行に1キー、または カンマ区切り）
+   - プレースホルダー: `status, tags, priority`
+   - 説明文: "Enter frontmatter keys to display (comma-separated or one per line)"
 
-```typescript
-class TopicStore {
-  private plugin: TopicLinePlugin;
-  private data: TopicData;
-  
-  /** トピック一覧取得 */
-  getTopics(): Topic[];
-  
-  /** トピック追加（最大20件制限） */
-  addTopic(topic: Omit<Topic, 'id' | 'createdAt'>): Promise<Topic | null>;
-  
-  /** トピック削除 */
-  removeTopic(id: string): Promise<void>;
-  
-  /** トピック並び替え */
-  reorderTopics(fromIndex: number, toIndex: number): Promise<void>;
-  
-  /** トピック内容更新（元ノート変更時） */
-  updateTopicContent(id: string, content: string): Promise<void>;
-  
-  /** データ読み込み */
-  load(): Promise<void>;
-  
-  /** データ保存 */
-  save(): Promise<void>;
-  
-  /** 変更通知用コールバック登録 */
-  onChange(callback: () => void): void;
-}
-```
+2. **ファイル名表示切り替え**
+   - トグルスイッチ
+   - ラベル: "Show file name"
+   - 説明文: "Display the source file name for each topic"
 
-**設計判断**:
-- データ変更時はコールバックでビューに通知（Observer パターン）
-- 永続化は `Plugin.saveData()` / `Plugin.loadData()` を使用
-- トピック数上限（20件）はaddTopic内でチェック
+### 5.2 Frontmatter解析（frontmatter.ts）
 
-### 5.3 TopicView（topic-view.ts）
+**ファイル**: `src/frontmatter.ts`
 
 ```typescript
-class TopicView extends ItemView {
-  static readonly VIEW_TYPE = 'topic-lines-view';
-  
-  private plugin: TopicLinePlugin;
-  private containerEl: HTMLElement;
-  
-  getViewType(): string;
-  getDisplayText(): string;
-  getIcon(): string;
-  
-  async onOpen(): Promise<void>;
-  async onClose(): Promise<void>;
-  
-  /** ビュー再描画 */
-  render(): void;
-  
-  /** 個別トピックアイテムの描画 */
-  private renderTopicItem(topic: Topic, index: number): HTMLElement;
-  
-  /** ドラッグ&ドロップ設定 */
-  private setupDragAndDrop(): void;
-}
+/**
+ * ファイルのfrontmatterから指定キーの値を取得する
+ * @param app Obsidian App インスタンス
+ * @param filePath ファイルパス
+ * @param keys 取得するキーのリスト
+ * @returns キーと値のマップ（存在しないキーは含まない）
+ */
+function getFrontmatterValues(
+  app: App,
+  filePath: string,
+  keys: string[]
+): Map<string, string>;
+
+/**
+ * frontmatter値を表示用文字列にフォーマットする
+ * 配列はカンマ区切りで連結
+ */
+function formatFrontmatterValue(value: unknown): string;
 ```
 
-**UI構造**:
+**Obsidian API活用**:
+- `app.metadataCache.getFileCache(file)?.frontmatter` を使用
+- メタデータキャッシュはObsidianが自動管理するため、ファイル変更時も自動更新
+
+### 5.3 トピックビュー拡張（topic-view.ts）
+
+**変更点**:
+
+1. `renderTopicItem()` メソッドの拡張
+   - frontmatter情報の取得と表示
+   - `showFileName` 設定に基づくファイル名表示制御
+
+2. 設定変更時の再描画
+   - `plugin.settings` の変更を検知して `render()` を呼び出す
+
+**UI要素追加**:
+
 ```
-topic-lines-container
-├── topic-item (data-topic-id="xxx")
-│   ├── topic-number ("1")
-│   ├── topic-content (複数行テキスト)
-│   ├── topic-file-info (ファイル名、控えめ表示)
-│   ├── topic-alert (元ノート不在時のみ表示)
-│   └── topic-actions
-│       └── delete-button
-├── topic-item ...
-└── ...
+.topic-item
+├── .topic-number        # 番号（既存）
+├── .topic-content-wrapper
+│   ├── .topic-content   # 内容（既存）
+│   ├── .topic-frontmatter  # [新規] frontmatter情報
+│   ├── .topic-file-info # ファイル名（条件付き表示）
+│   └── .topic-alert     # アラート（既存）
+└── .topic-actions       # 削除ボタン（既存）
 ```
-
-**設計判断**:
-- ItemViewを継承し、Obsidian標準のサイドバービューとして実装
-- ドラッグ&ドロップはHTML5 Drag and Drop APIを使用
-- Obsidianテーマ変数（CSS custom properties）を活用してテーマ互換性を確保
-
-### 5.4 Commands（commands.ts）
-
-```typescript
-function registerCommands(plugin: TopicLinePlugin): void;
-```
-
-**登録コマンド**:
-
-| コマンドID | 名前 | 説明 |
-|-----------|------|------|
-| `topic-lines:register-topic` | Register topic | 選択行をトピックとして登録 |
-| `topic-lines:jump-to-topic-1` | Jump to topic 1 | トピック1にジャンプ |
-| `topic-lines:jump-to-topic-2` | Jump to topic 2 | トピック2にジャンプ |
-| `topic-lines:jump-to-topic-3` | Jump to topic 3 | トピック3にジャンプ |
-| `topic-lines:show-topic-view` | Show topic lines | サイドバービューを表示 |
-
-**設計判断**:
-- ジャンプコマンドは要件に従い1〜3の3つのみ
-- 登録コマンドは `editorCallback` を使用し、エディタがアクティブな場合のみ有効
-- ジャンプコマンドは `callback` を使用（どこからでも実行可能）
 
 ---
 
 ## 6. 処理フロー
 
-### 6.1 トピック登録フロー
+### 6.1 設定変更フロー
 
 ```
-1. ユーザーがエディタで行を選択
-2. コマンドパレットから「Register topic」を実行
-3. editorCallback が発火
-4. Editor.getSelection() で選択テキスト取得
-5. Editor.getCursor() で行番号取得
-6. TopicStore.addTopic() を呼び出し
-   - 20件上限チェック
-   - UUID生成
-   - データ保存
-   - onChange コールバック発火
-7. TopicView.render() が呼ばれ、ビュー更新
-8. Notice で登録完了を通知
+┌─────────────────────────────────────────────────────────────────┐
+│ ユーザーが設定画面で値を変更                                    │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ TopicLineSettingTab.onChange()                                  │
+│ - plugin.settings を更新                                        │
+│ - plugin.saveSettings() を呼び出し                              │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ TopicView.render() が再実行される                               │
+│ - 新しい設定値でfrontmatter/ファイル名表示を更新               │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### 6.2 トピックジャンプフロー（クリック）
+### 6.2 Frontmatter表示フロー
 
 ```
-1. ユーザーがサイドバーのトピックをクリック
-2. clickイベントハンドラが発火
-3. topic.filePath からファイル存在確認
-   - 存在しない場合: Notice でエラー表示、処理終了
-4. workspace.openLinkText() でファイルを開く
-5. editor.setCursor() でカーソル位置を設定
-6. editor.scrollIntoView() で該当行を表示
-```
-
-### 6.3 元ノート変更追従フロー
-
-```
-1. vault.on('modify') イベント登録
-2. 変更されたファイルがトピックの元ノートか確認
-3. 該当する場合:
-   - ファイル内容を読み込み
-   - 該当行の内容を取得
-   - TopicStore.updateTopicContent() で更新
-   - TopicView.render() でビュー更新
-```
-
-### 6.4 元ノート削除/移動検出フロー
-
-```
-1. vault.on('delete') / vault.on('rename') イベント登録
-2. 削除/移動されたファイルがトピックの元ノートか確認
-3. 該当する場合:
-   - delete: トピックの存在フラグを更新
-   - rename: topic.filePath を新パスに更新
-4. TopicView.render() でビュー更新（アラート表示）
+┌─────────────────────────────────────────────────────────────────┐
+│ TopicView.renderTopicItem() 実行時                             │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ plugin.settings.frontmatterKeys が空でないか確認               │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+              ┌───────────────┴───────────────┐
+              │                               │
+              ▼ (空)                          ▼ (キーあり)
+    ┌─────────────────┐          ┌─────────────────────────────┐
+    │ 何も表示しない  │          │ getFrontmatterValues()     │
+    └─────────────────┘          │ でfrontmatter値を取得       │
+                                 └─────────────────────────────┘
+                                              │
+                                              ▼
+                                 ┌─────────────────────────────┐
+                                 │ 各キーについて:              │
+                                 │ - 値が存在 → 表示           │
+                                 │ - 値がない → スキップ       │
+                                 │ - 配列 → カンマ区切り       │
+                                 └─────────────────────────────┘
 ```
 
 ---
 
-## 7. イベント処理
+## 7. スタイル設計
 
-### 7.1 登録するイベント
+### 7.1 追加CSSクラス
 
-| イベント | 処理内容 |
-|----------|----------|
-| `vault.on('modify')` | 元ノート変更時のトピック内容更新 |
-| `vault.on('delete')` | 元ノート削除時のアラート表示 |
-| `vault.on('rename')` | 元ノート移動/リネーム時のパス更新 |
-
-### 7.2 イベント登録の注意点
-
-- すべてのイベントは `this.registerEvent()` で登録し、アンロード時の自動解除を保証
-- `workspace.onLayoutReady()` 内で登録し、起動時の不要な発火を防止
-- イベントハンドラ内では `layoutReady` チェックを追加
-
----
-
-## 8. UI/UXデザイン
-
-### 8.1 サイドバービュー
-
-**レイアウト**:
-```
-┌─────────────────────────────┐
-│ Topic Lines            [≡] │  ← ヘッダー（ドラッグでドッキング変更可能）
-├─────────────────────────────┤
-│ 1. First line of topic     │  ← トピック1
-│    Second line...          │
-│    notes/meeting.md        │  ← ファイル名（グレー、小さめ）
-├─────────────────────────────┤
-│ 2. Another topic content   │  ← トピック2
-│    journal/2024-01.md      │
-├─────────────────────────────┤
-│ 3. ⚠ File not found        │  ← トピック3（元ノート不在）
-│    deleted-file.md         │
-└─────────────────────────────┘
-```
-
-### 8.2 スタイリング方針
-
-- Obsidianテーマ変数を最大限活用
-- カスタムスタイルは `styles.css` に最小限で定義
-- ダークモード/ライトモード両対応はテーマ変数により自動対応
-
-**主要CSS変数**:
 ```css
-var(--text-normal)        /* 通常テキスト */
-var(--text-muted)         /* 補足テキスト（ファイル名） */
-var(--text-warning)       /* 警告テキスト */
-var(--background-primary) /* 背景色 */
-var(--interactive-hover)  /* ホバー時背景 */
+/* Frontmatter情報表示 */
+.topic-frontmatter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 4px;
+}
+
+.topic-frontmatter-item {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  background-color: var(--background-secondary);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.topic-frontmatter-key {
+  color: var(--text-faint);
+}
+
+.topic-frontmatter-value {
+  color: var(--text-muted);
+}
 ```
 
-### 8.3 アクセシビリティ
+### 7.2 テーマ互換性
 
-- ドラッグハンドルにaria-labelを付与
-- 削除ボタンにaria-labelを付与
-- フォーカス可能な要素にキーボードナビゲーション対応
+- すべての色指定にObsidian CSS変数を使用
+- ライト/ダークテーマ両対応
+- カスタムテーマでも適切に表示
+
+---
+
+## 8. API設計
+
+### 8.1 設定関連メソッド（main.ts）
+
+```typescript
+class TopicLinePlugin extends Plugin {
+  // 既存
+  settings: TopicLineSettings;
+  async loadSettings(): Promise<void>;
+  async saveSettings(): Promise<void>;
+
+  // 追加: 設定変更通知用
+  private settingsChangeCallbacks: Array<() => void>;
+  onSettingsChange(callback: () => void): void;
+  offSettingsChange(callback: () => void): void;
+  private notifySettingsChange(): void;
+}
+```
+
+### 8.2 Frontmatterユーティリティ（frontmatter.ts）
+
+```typescript
+/**
+ * ファイルのfrontmatterから指定キーの値を取得する
+ */
+export function getFrontmatterValues(
+  app: App,
+  filePath: string,
+  keys: string[]
+): Map<string, string>;
+
+/**
+ * 設定文字列をキー配列にパースする
+ * カンマ区切りまたは改行区切りに対応
+ */
+export function parseFrontmatterKeys(input: string): string[];
+```
 
 ---
 
 ## 9. エラーハンドリング
 
-### 9.1 エラーケース一覧
-
-| ケース | 対応 |
-|--------|------|
-| トピック登録時に上限（20件）超過 | Notice でエラー表示、登録をキャンセル |
-| ジャンプ時に元ノートが存在しない | Notice でエラー表示、サイドバーにアラート表示 |
-| データ読み込み失敗 | デフォルト値（空配列）で初期化、コンソールにエラーログ |
-| データ保存失敗 | Notice でエラー表示、コンソールにエラーログ |
-
-### 9.2 エラーメッセージ
-
-| 状況 | メッセージ |
-|------|-----------|
-| 上限超過 | "Cannot add topic: maximum limit (20) reached" |
-| ファイル不在 | "File not found: {filename}" |
-| 保存失敗 | "Failed to save topic data" |
+| シナリオ | 対応 |
+|---|---|
+| ファイルが存在しない | frontmatter取得をスキップ、既存のアラート表示 |
+| frontmatterが存在しない | 空のMapを返す（何も表示しない） |
+| 指定キーが存在しない | そのキーをスキップ |
+| frontmatter値が複雑なオブジェクト | JSON.stringify でフォールバック |
 
 ---
 
-## 10. パフォーマンス考慮
+## 10. テスト観点
 
-### 10.1 起動時
+### 10.1 設定画面
 
-- `onload()` では最小限の処理のみ実行
-- ビューの初期化は `workspace.onLayoutReady()` 後に遅延
-- データ読み込みは非同期で実行
+- [ ] 設定タブが表示される
+- [ ] frontmatterキーを入力・保存できる
+- [ ] ファイル名表示トグルが動作する
+- [ ] 設定がObsidian再起動後も保持される
 
-### 10.2 実行時
+### 10.2 Frontmatter表示
 
-- 元ノート変更イベントはデバウンス（300ms）を適用
-- ビュー再描画は必要な場合のみ実行（差分検出は行わず全再描画、トピック数が最大20件のため問題なし）
+- [ ] 指定キーの値が表示される
+- [ ] 存在しないキーは表示されない
+- [ ] 配列値がカンマ区切りで表示される
+- [ ] 複数キー指定時、指定順に表示される
+- [ ] frontmatterがないファイルでもエラーにならない
 
-### 10.3 メモリ
+### 10.3 ファイル名表示切り替え
 
-- トピック数上限（20件）により、メモリ使用量は一定範囲に収まる
-- 不要な参照は明示的にnull代入してGC対象に
-
----
-
-## 11. テスト方針
-
-### 11.1 手動テスト項目
-
-| 機能 | テスト内容 |
-|------|-----------|
-| トピック登録 | 単一行/複数行選択での登録、上限到達時の動作 |
-| トピック表示 | 番号表示、内容全文表示、ファイル名表示 |
-| クリックジャンプ | 正常ジャンプ、ファイル不在時のエラー |
-| コマンドジャンプ | トピック1〜3へのジャンプ、該当トピック不在時 |
-| 削除 | 削除後の番号再採番 |
-| 並び替え | ドラッグ&ドロップ、番号再採番 |
-| 永続化 | Obsidian再起動後のデータ保持 |
-| 元ノート追従 | 内容変更時の表示更新 |
-| 元ノート不在 | 削除時のアラート表示 |
-| テーマ | ライト/ダークテーマでの表示 |
-
-### 11.2 自動テスト
-
-本プラグインはObsidian環境に強く依存するため、自動テストは限定的に実施:
-- 型チェック: `tsc --noEmit`
-- リント: `eslint`
-- 純粋関数のユニットテスト（将来的にvitest導入を検討）
+- [ ] デフォルトでファイル名が非表示
+- [ ] ONにするとファイル名が表示される
+- [ ] OFFにするとファイル名が非表示になる
+- [ ] 設定変更が即座に反映される
 
 ---
 
-## 12. 将来の拡張ポイント
+## 11. 実装順序
 
-以下は現時点では実装しないが、データ構造やアーキテクチャで考慮しておく項目:
+1. **Phase 1: 設定インフラ**
+   - `settings.ts` の拡張（新しい設定項目追加）
+   - `main.ts` のデータ読み込み/保存ロジック調整
 
-| 項目 | 考慮事項 |
-|------|----------|
-| トピック数上限の設定化 | settings.tsに設定項目を追加可能な構造 |
-| ジャンプコマンド数の拡張 | commands.tsでループ生成可能な構造 |
-| トピックのエクスポート/インポート | TopicData構造がJSON互換 |
-| 検索機能 | TopicStore.getTopics()で全件取得可能 |
+2. **Phase 2: 設定画面**
+   - `settings-tab.ts` の新規作成
+   - `main.ts` に設定タブ登録
 
----
+3. **Phase 3: Frontmatter機能**
+   - `frontmatter.ts` の新規作成
+   - `topic-view.ts` にfrontmatter表示を追加
+   - `styles.css` にスタイル追加
 
-## 13. ファイル一覧と依存関係
-
-```
-src/
-├── main.ts          [TopicLinePlugin]
-│   ├── imports: settings.ts, topic-store.ts, topic-view.ts, commands.ts
-│   └── exports: TopicLinePlugin (default)
-│
-├── types.ts         [Topic, TopicData]
-│   └── exports: Topic, TopicData
-│
-├── settings.ts      [TopicLineSettings, DEFAULT_SETTINGS, TopicLineSettingTab]
-│   ├── imports: types.ts
-│   └── exports: TopicLineSettings, DEFAULT_SETTINGS, TopicLineSettingTab
-│
-├── topic-store.ts   [TopicStore]
-│   ├── imports: types.ts
-│   └── exports: TopicStore
-│
-├── topic-view.ts    [TopicView]
-│   ├── imports: types.ts, topic-store.ts, utils.ts
-│   └── exports: TopicView
-│
-├── commands.ts      [registerCommands]
-│   ├── imports: types.ts, topic-store.ts, topic-view.ts
-│   └── exports: registerCommands
-│
-└── utils.ts         [ユーティリティ関数]
-    └── exports: fileExists, generateUUID, etc.
-```
+4. **Phase 4: ファイル名表示切り替え**
+   - `topic-view.ts` の条件付き表示実装
 
 ---
 
-## 14. CI/CD設計
+## 12. 変更履歴
 
-### 14.1 概要
-
-GitHub Actionsを用いた自動リリースパイプラインを構築する。tagprによるバージョン管理とリリースPR自動生成を行い、BRAT（Beta Reviewers Auto-update Tool）に対応したリリースを実現する。
-
-### 14.2 採用技術
-
-| 技術 | 選定理由 |
-|------|----------|
-| tagpr | リリースPR自動生成、セマンティックバージョニング、タグ・GitHubリリース自動作成 |
-| GitHub Actions | GitHub統合、無料枠あり、tagprとの相性 |
-| GitHub CLI (gh) | リリースアセットのアップロードに使用、Actions環境で標準利用可能 |
-
-### 14.3 不採用技術と理由
-
-| 技術 | 不採用理由 |
-|------|-----------|
-| release-it | tagprと比較して設定が複雑、既存リポジトリでtagprの実績あり |
-| semantic-release | Node.js依存が重い、tagprで十分な機能を持つ |
-| 手動リリース | ヒューマンエラーのリスク、リリース頻度の低下 |
-
-### 14.4 BRAT対応要件
-
-BRAT（Obsidian42-brat）はベータ版プラグインの配布・自動更新を可能にするツールである。対応には以下が必要:
-
-| 要件 | 対応 |
-|------|------|
-| GitHubリリース | tagprがドラフトリリースを作成、ワークフローで公開 |
-| manifest.json | リリースアセットとしてアップロード |
-| main.js | ビルド成果物をリリースアセットとしてアップロード |
-| styles.css | リリースアセットとしてアップロード |
-| manifest-beta.json | ベータ版用マニフェスト（オプション、将来対応） |
-
-### 14.5 ファイル構成
-
-```
-.github/
-└── workflows/
-    ├── lint.yml      # 既存: ESLintによるコードチェック
-    └── tagpr.yml     # 新規: tagprによるリリース管理
-.tagpr                # 新規: tagpr設定ファイル
-manifest.json         # 既存: Obsidianプラグインマニフェスト
-manifest-beta.json    # 新規: BRAT用ベータマニフェスト（オプション）
-```
-
-### 14.6 .tagpr設定
-
-```gitconfig
-[tagpr]
-    releaseBranch = main
-    versionFile = manifest.json,package.json,versions.json
-    vPrefix = false
-    changelog = true
-    release = draft
-    majorLabels = major
-    minorLabels = minor
-    command = npm run build
-```
-
-**設定項目の説明**:
-
-| 項目 | 値 | 理由 |
-|------|-----|------|
-| releaseBranch | main | メインブランチからリリース |
-| versionFile | manifest.json,package.json,versions.json | Obsidianプラグインのバージョン管理に必要なファイル群 |
-| vPrefix | false | Obsidianコミュニティプラグインはvプレフィックスなしのタグを推奨 |
-| changelog | true | CHANGELOG.mdの自動更新を有効化 |
-| release | draft | イミュータブルリリースのためドラフトで作成 |
-| majorLabels | major | メジャーバージョンアップ用ラベル |
-| minorLabels | minor | マイナーバージョンアップ用ラベル |
-| command | npm run build | リリース前にビルドを実行 |
-
-### 14.7 GitHub Actionsワークフロー
-
-#### tagpr.yml
-
-```yaml
-name: tagpr
-on:
-  push:
-    branches:
-      - main
-
-permissions:
-  contents: write
-  pull-requests: write
-  issues: read
-
-jobs:
-  tagpr:
-    runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.tagpr.outputs.tag }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GH_PAT }}
-
-      - name: Run tagpr
-        id: tagpr
-        uses: Songmu/tagpr@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-
-      - name: Setup Node.js
-        if: steps.tagpr.outputs.tag != ''
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Install dependencies
-        if: steps.tagpr.outputs.tag != ''
-        run: npm ci
-
-      - name: Build plugin
-        if: steps.tagpr.outputs.tag != ''
-        run: npm run build
-
-      - name: Upload release assets
-        if: steps.tagpr.outputs.tag != ''
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-        run: |
-          gh release upload ${{ steps.tagpr.outputs.tag }} \
-            main.js \
-            manifest.json \
-            styles.css \
-            --clobber
-
-      - name: Publish release
-        if: steps.tagpr.outputs.tag != ''
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-        run: |
-          gh release edit ${{ steps.tagpr.outputs.tag }} --draft=false
-```
-
-**ワークフローの流れ**:
-
-```
-1. mainブランチへのpush
-   ↓
-2. tagprがリリースPRを作成/更新
-   - 未リリースの変更がある場合のみ
-   - manifest.json, package.json, versions.jsonのバージョンを更新
-   - CHANGELOG.mdを更新
-   ↓
-3. リリースPRがマージされる（手動）
-   ↓
-4. tagprがタグを作成し、ドラフトリリースを生成
-   ↓
-5. Node.jsセットアップ、依存関係インストール
-   ↓
-6. npm run buildでプラグインをビルド
-   ↓
-7. gh release uploadでリリースアセットをアップロード
-   - main.js
-   - manifest.json
-   - styles.css
-   ↓
-8. gh release editでドラフトを公開
-```
-
-### 14.8 リリースアセット
-
-| ファイル | 必須 | 説明 |
-|----------|------|------|
-| main.js | ◯ | ビルドされたプラグイン本体 |
-| manifest.json | ◯ | プラグインメタデータ |
-| styles.css | ◯ | プラグインスタイル |
-| manifest-beta.json | △ | ベータ版用マニフェスト（将来対応） |
-
-### 14.9 バージョン管理戦略
-
-| ラベル | バージョン変更 | 使用例 |
-|--------|---------------|--------|
-| major | x.0.0 | 破壊的変更、APIの大幅変更 |
-| minor | 0.x.0 | 新機能追加、後方互換性あり |
-| （なし） | 0.0.x | バグ修正、軽微な改善 |
-
-### 14.10 セットアップ手順
-
-1. **GH_PATの作成と登録**:
-   - GitHubで Personal Access Token (Classic) を作成
-   - 権限: `repo`, `workflow`
-   - リポジトリの Settings → Secrets and variables → Actions に `GH_PAT` として登録
-
-2. **リポジトリ設定**:
-   - Settings → Actions → General → Workflow permissions
-   - "Allow GitHub Actions to create and approve pull requests" を有効化
-
-3. **設定ファイルの作成**:
-   - `.tagpr` ファイルを作成
-   - `.github/workflows/tagpr.yml` を作成
-
-4. **動作確認**:
-   - mainブランチにコミットをpush
-   - tagprがリリースPRを作成することを確認
-   - PRをマージし、タグとリリースが作成されることを確認
-
-### 14.11 versions.jsonの更新
-
-tagprはversionFileに指定されたファイル内のバージョン文字列を更新する。`versions.json`はObsidian固有の形式（バージョンマッピング）のため、特別な対応が必要:
-
-**現在の形式**:
-```json
-{
-  "1.0.0": "0.15.0"
-}
-```
-
-**対応方針**:
-
-tagprはversions.json内の最初に見つかったセマンティックバージョン文字列を更新する。これにより新バージョンのキーが追加される形になるため、基本的にはそのまま動作する。
-
-ただし、既存の`version-bump.mjs`は`npm_package_version`環境変数に依存しており、tagprのワークフローでは使用しない。tagprが直接ファイルを更新する方式を採用する。
-
-**注意点**:
-- tagprはJSON/JSONCファイル内のセマンティックバージョン文字列を検出して更新する
-- versions.jsonはキーがバージョン、値がminAppVersionの形式
-- tagprはキー側のバージョンを更新し、新しいエントリを追加する動作となる
-- 必要に応じてリリースPRで手動調整が可能
-
-### 14.12 manifest-beta.json（将来対応）
-
-BRATはベータ版プラグインの配布に`manifest-beta.json`を使用できる。現時点では実装しないが、将来的に以下の対応が可能:
-
-```json
-{
-  "id": "topic-lines",
-  "name": "Topic Lines",
-  "version": "1.1.0-beta.1",
-  "minAppVersion": "0.15.0",
-  "description": "Display any lines from your notes as topics in the sidebar for quick access and navigation.",
-  "author": "handlename",
-  "authorUrl": "https://github.com/handlename",
-  "isDesktopOnly": false
-}
-```
-
-**ベータリリースフロー**（将来対応）:
-1. 別ブランチ（例: `beta`）からのリリース
-2. manifest-beta.jsonのバージョン更新
-3. リリースアセットにmanifest-beta.jsonを追加
-
----
-
-## 15. 変更履歴
-
-| 日付 | バージョン | 変更内容 | 作成者 |
-|------|-----------|----------|--------|
-| 2026-01-09 | 1.0 | 初版作成 | - |
-| 2026-01-09 | 1.1 | CI/CD設計（tagpr + BRAT対応）を追加 | - |
+| 日付 | バージョン | 変更内容 |
+|---|---|---|
+| 2026-01-10 | 1.0 | 初版作成（FR-010〜FR-012対応設計） |

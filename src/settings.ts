@@ -1,12 +1,18 @@
 /**
  * プラグイン設定のインターフェース
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface TopicLineSettings {
-	// 将来の拡張用（現時点では設定項目なし）
+	/** 表示するfrontmatterキーのリスト */
+	frontmatterKeys: string[];
+
+	/** ファイル名を表示するか */
+	showFileName: boolean;
 }
 
 /**
  * デフォルト設定
  */
-export const DEFAULT_SETTINGS: TopicLineSettings = {};
+export const DEFAULT_SETTINGS: TopicLineSettings = {
+	frontmatterKeys: [],
+	showFileName: false,
+};
