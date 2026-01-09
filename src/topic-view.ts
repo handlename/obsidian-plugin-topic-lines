@@ -1,4 +1,10 @@
-import { ItemView, MarkdownView, WorkspaceLeaf } from "obsidian";
+import {
+	Component,
+	ItemView,
+	MarkdownRenderer,
+	MarkdownView,
+	WorkspaceLeaf,
+} from "obsidian";
 import type TopicLinePlugin from "./main";
 import { Topic } from "./types";
 
@@ -9,10 +15,12 @@ export const VIEW_TYPE_TOPIC_LINES = "topic-lines-view";
  */
 export class TopicView extends ItemView {
 	private plugin: TopicLinePlugin;
+	private renderComponent: Component;
 
 	constructor(leaf: WorkspaceLeaf, plugin: TopicLinePlugin) {
 		super(leaf);
 		this.plugin = plugin;
+		this.renderComponent = new Component();
 	}
 
 	getViewType(): string {
@@ -33,7 +41,7 @@ export class TopicView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
-		// クリーンアップは自動的に行われる
+		this.renderComponent.unload();
 	}
 
 	/**
@@ -95,11 +103,17 @@ export class TopicView extends ItemView {
 			cls: "topic-content-wrapper",
 		});
 
-		// 内容
-		contentWrapper.createDiv({
+		// 内容（Markdownとしてレンダリング）
+		const contentEl = contentWrapper.createDiv({
 			cls: "topic-content",
-			text: topic.originalContent,
 		});
+		void MarkdownRenderer.render(
+			this.plugin.app,
+			topic.originalContent,
+			contentEl,
+			topic.filePath,
+			this.renderComponent,
+		);
 
 		// ファイル情報
 		const fileName = topic.filePath.split("/").pop() ?? topic.filePath;

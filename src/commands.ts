@@ -87,7 +87,7 @@ export function registerCommands(plugin: TopicLinePlugin): void {
 	// サイドバー表示コマンド
 	plugin.addCommand({
 		id: "show-topic-view",
-		name: "Show topic lines",
+		name: "Show sidebar",
 		callback: () => {
 			const leaves = plugin.app.workspace.getLeavesOfType(
 				VIEW_TYPE_TOPIC_LINES,
