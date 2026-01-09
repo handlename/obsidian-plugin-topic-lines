@@ -148,9 +148,15 @@ export class TopicStore {
 	 * データを読み込む
 	 */
 	async load(): Promise<void> {
-		const loaded = (await this.plugin.loadData()) as TopicData | null;
-		if (loaded && typeof loaded === "object" && "version" in loaded) {
-			this.data = loaded;
+		const loaded = (await this.plugin.loadData()) as {
+			version?: number;
+			topics?: Topic[];
+		} | null;
+		if (loaded && typeof loaded === "object") {
+			this.data = {
+				version: 1,
+				topics: loaded.topics ?? [],
+			};
 		} else {
 			this.data = { version: 1, topics: [] };
 		}
@@ -158,9 +164,16 @@ export class TopicStore {
 
 	/**
 	 * データを保存する
+	 * 既存の他のデータ（settingsなど）を保持しつつトピックデータを更新する
 	 */
 	async save(): Promise<void> {
-		await this.plugin.saveData(this.data);
+		const existingData =
+			((await this.plugin.loadData()) as Record<string, unknown>) ?? {};
+		await this.plugin.saveData({
+			...existingData,
+			version: this.data.version,
+			topics: this.data.topics,
+		});
 	}
 
 	/**

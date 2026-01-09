@@ -13,7 +13,7 @@
   - 詳細: `src/settings.ts` に `frontmatterKeys: string[]` と `showFileName: boolean` を追加し、デフォルト値を設定する
   - 完了条件: `TopicLineSettings` インターフェースに新しいフィールドが定義され、`DEFAULT_SETTINGS` にデフォルト値が設定されている
 
-- [ ] T-1.2: 設定の読み込み・保存ロジック調整
+- [x] T-1.2: 設定の読み込み・保存ロジック調整
   - 目的: 既存データとの互換性を保ちつつ、設定データを正しく永続化する
   - 詳細: `src/main.ts` の `loadSettings()` と `saveSettings()` を調整し、既存の `TopicData` と `settings` が共存できるようにする。既存データに `settings` がない場合はデフォルト値を適用する
   - 完了条件: 既存データがある環境でプラグインを起動しても設定が正しく読み込まれ、新しい設定を保存してもトピックデータが失われない
