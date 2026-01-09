@@ -50,7 +50,7 @@
 
 frontmatterから情報を取得し、トピックに表示する機能を実装する。
 
-- [ ] T-3.1: Frontmatter解析ユーティリティの作成
+- [x] T-3.1: Frontmatter解析ユーティリティの作成
   - 目的: ファイルのfrontmatterから指定キーの値を取得する関数を提供する
   - 詳細: `src/frontmatter.ts` を新規作成し、`getFrontmatterValues()` と `formatFrontmatterValue()` 関数を実装する。Obsidianの `metadataCache` を使用してfrontmatterを取得する
   - 完了条件: 指定したキーの値を取得でき、配列値はカンマ区切り文字列に変換される
