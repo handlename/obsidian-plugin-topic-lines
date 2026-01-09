@@ -2,6 +2,10 @@
 
 ## [1.0.0](https://github.com/handlename/obsidian-plugin-topic-lines/commits/1.0.0) - 2026-01-09
 - docs: rewrite README for Topic Lines plugin by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/2
+- fix: remove command from .tagpr to fix release workflow by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/4
+
+## [1.0.0](https://github.com/handlename/obsidian-plugin-topic-lines/commits/1.0.0) - 2026-01-09
+- docs: rewrite README for Topic Lines plugin by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/2
 
 ## [Unreleased]
 
