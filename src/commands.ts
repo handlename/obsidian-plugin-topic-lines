@@ -65,19 +65,33 @@ export function registerCommands(plugin: TopicLinePlugin): void {
 			}
 
 			const selection = editor.getSelection();
-			if (!selection) {
-				new Notice("No text selected");
-				return;
-			}
+			let from: { line: number; ch: number };
+			let to: { line: number; ch: number };
+			let content: string;
 
-			const from = editor.getCursor("from");
-			const to = editor.getCursor("to");
+			if (selection) {
+				// 範囲選択がある場合は選択範囲を使用
+				from = editor.getCursor("from");
+				to = editor.getCursor("to");
+				content = selection;
+			} else {
+				// 範囲選択がない場合は現在のカーソル行を使用
+				const cursor = editor.getCursor();
+				from = { line: cursor.line, ch: 0 };
+				to = { line: cursor.line, ch: 0 };
+				content = editor.getLine(cursor.line);
+
+				if (!content.trim()) {
+					new Notice("Current line is empty");
+					return;
+				}
+			}
 
 			const topic = await plugin.topicStore.addTopic({
 				filePath: file.path,
 				startLine: from.line,
 				endLine: to.line,
-				originalContent: selection,
+				originalContent: content,
 			});
 
 			if (topic) {
