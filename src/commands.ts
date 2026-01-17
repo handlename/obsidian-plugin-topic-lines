@@ -104,7 +104,81 @@ export function registerCommands(plugin: TopicLinePlugin): void {
 				);
 				new Notice("Topic registered");
 			} else {
-				new Notice("Cannot add topic: maximum limit (20) reached");
+			new Notice("Cannot add topic: maximum limit (20) reached");
+			}
+		},
+	});
+
+	// トピック登録/解除トグルコマンド
+	plugin.addCommand({
+		id: "toggle-register-topic",
+		name: "Toggle register topic",
+		editorCallback: async (editor: Editor, view: MarkdownView) => {
+			const file = view.file;
+			if (!file) {
+				new Notice("No file is open");
+				return;
+			}
+
+			const selection = editor.getSelection();
+			let from: { line: number; ch: number };
+			let to: { line: number; ch: number };
+			let content: string;
+
+			if (selection) {
+				from = editor.getCursor("from");
+				to = editor.getCursor("to");
+				content = selection;
+			} else {
+				const cursor = editor.getCursor();
+				from = { line: cursor.line, ch: 0 };
+				to = { line: cursor.line, ch: 0 };
+				content = editor.getLine(cursor.line);
+
+				if (!content.trim()) {
+					new Notice("Current line is empty");
+					return;
+				}
+			}
+
+			// 現在の選択範囲と重複するトピックを探す
+			const existingTopics = plugin.topicStore.getTopicsByFilePath(
+				file.path,
+			);
+			const overlappingTopic = existingTopics.find(
+				(topic) =>
+					from.line <= topic.endLine && to.line >= topic.startLine,
+			);
+
+			if (overlappingTopic) {
+				// 重複するトピックがある場合は解除
+				await removeBlockIdFromFile(
+					plugin,
+					file,
+					overlappingTopic.blockId,
+				);
+				await plugin.topicStore.removeTopic(overlappingTopic.id);
+				new Notice("Topic unregistered");
+			} else {
+				// 重複するトピックがない場合は登録
+				const topic = await plugin.topicStore.addTopic({
+					filePath: file.path,
+					startLine: from.line,
+					endLine: to.line,
+					originalContent: content,
+				});
+
+				if (topic) {
+					await insertBlockIdToFile(
+						plugin,
+						file,
+						from.line,
+						topic.blockId,
+					);
+					new Notice("Topic registered");
+				} else {
+					new Notice("Cannot add topic: maximum limit (20) reached");
+				}
 			}
 		},
 	});
