@@ -107,3 +107,34 @@ export function debounce<T extends (...args: Parameters<T>) => void>(
 		}, wait);
 	};
 }
+
+/**
+ * 複数行テキストから共通の先頭インデントを除去する
+ * サブアイテムを選択した場合に、先頭のインデントを取り除いて通常のリストとして表示するために使用
+ */
+export function dedent(text: string): string {
+	const lines = text.split("\n");
+
+	// 空でない行から最小インデント（タブまたはスペース）を検出
+	let minIndent = Infinity;
+	for (const line of lines) {
+		if (line.trim() === "") continue;
+		const match = line.match(/^[\t ]*/);
+		const indent = match ? match[0].length : 0;
+		if (indent < minIndent) {
+			minIndent = indent;
+		}
+	}
+
+	if (minIndent === 0 || minIndent === Infinity) {
+		return text;
+	}
+
+	// 各行から共通インデントを除去
+	return lines
+		.map((line) => {
+			if (line.trim() === "") return line;
+			return line.slice(minIndent);
+		})
+		.join("\n");
+}

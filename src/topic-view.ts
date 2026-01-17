@@ -10,6 +10,7 @@ import type TopicLinePlugin from "./main";
 import { Topic } from "./types";
 import { removeBlockIdFromFile } from "./commands";
 import { getFrontmatterValues } from "./frontmatter";
+import { dedent } from "./utils";
 
 export const VIEW_TYPE_TOPIC_LINES = "topic-lines-view";
 
@@ -113,7 +114,7 @@ export class TopicView extends ItemView {
 		});
 		void MarkdownRenderer.render(
 			this.plugin.app,
-			topic.originalContent,
+			dedent(topic.originalContent),
 			contentEl,
 			topic.filePath,
 			this.renderComponent,
