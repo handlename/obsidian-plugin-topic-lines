@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/handlename/obsidian-plugin-topic-lines/compare/1.0.0...1.1.0) - 2026-01-17
+- fix: display indented list items correctly in sidebar by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/5
+- feat: register current line as topic when no selection by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/7
+- feat: add clear all topics command and sidebar menu by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/8
+- feat: add toggle register topic command by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/9
+- test: add vitest and unit tests for utils by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/10
+
 ## [1.0.0](https://github.com/handlename/obsidian-plugin-topic-lines/commits/1.0.0) - 2026-01-09
 - docs: rewrite README for Topic Lines plugin by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/2
 - fix: remove command from .tagpr to fix release workflow by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/4
