@@ -1,3 +1,19 @@
+.topic-lines-header {
+	display: flex;
+	justify-content: flex-end;
+	padding: 4px 8px 0 8px;
+}
+
+.topic-lines-menu-button {
+	padding: 4px;
+	border-radius: 4px;
+	color: var(--text-muted);
+}
+
+.topic-lines-menu-button:hover {
+	color: var(--text-normal);
+}
+
 .topic-lines-container {
 	padding: 8px;
 }

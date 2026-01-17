@@ -173,4 +173,31 @@ export function registerCommands(plugin: TopicLinePlugin): void {
 			}
 		},
 	});
+
+	// 全トピック削除コマンド
+	plugin.addCommand({
+		id: "clear-all-topics",
+		name: "Clear all topics",
+		callback: async () => {
+			const topics = plugin.topicStore.getTopics();
+			if (topics.length === 0) {
+				new Notice("No topics to clear");
+				return;
+			}
+
+			// 各トピックのブロックIDをファイルから削除
+			for (const topic of topics) {
+				const file = plugin.app.vault.getAbstractFileByPath(
+					topic.filePath,
+				);
+				if (file instanceof TFile) {
+					await removeBlockIdFromFile(plugin, file, topic.blockId);
+				}
+			}
+
+			// すべてのトピックを削除
+			await plugin.topicStore.clearAllTopics();
+			new Notice("All topics cleared");
+		},
+	});
 }
