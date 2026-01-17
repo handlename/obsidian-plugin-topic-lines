@@ -28,5 +28,6 @@ export default tseslint.config(
 		"versions.json",
 		"main.js",
 		"vault.local/**",
+		"vitest.config.ts",
 	]),
 );
