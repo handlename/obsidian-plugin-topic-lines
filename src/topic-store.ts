@@ -72,6 +72,18 @@ export class TopicStore {
 	}
 
 	/**
+	 * すべてのトピックを削除する
+	 * @returns 削除されたトピックの配列
+	 */
+	async clearAllTopics(): Promise<Topic[]> {
+		const removedTopics = [...this.data.topics];
+		this.data.topics = [];
+		await this.save();
+		this.notifyChange();
+		return removedTopics;
+	}
+
+	/**
 	 * トピックを並び替える
 	 */
 	async reorderTopics(fromIndex: number, toIndex: number): Promise<void> {

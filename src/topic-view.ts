@@ -3,8 +3,10 @@ import {
 	ItemView,
 	MarkdownRenderer,
 	MarkdownView,
+	Menu,
 	TFile,
 	WorkspaceLeaf,
+	setIcon,
 } from "obsidian";
 import type TopicLinePlugin from "./main";
 import { Topic } from "./types";
@@ -61,11 +63,25 @@ export class TopicView extends ItemView {
 		}
 		container.empty();
 
+		const topics = this.plugin.topicStore.getTopics();
+
+		// ヘッダー部分（ハンバーガーメニューを含む）
+		const headerContainer = container.createDiv({
+			cls: "topic-lines-header",
+		});
+
+		const menuButton = headerContainer.createEl("button", {
+			cls: "topic-lines-menu-button clickable-icon",
+			attr: { "aria-label": "Menu" },
+		});
+		setIcon(menuButton, "menu");
+		menuButton.addEventListener("click", (event) => {
+			this.showMenu(event);
+		});
+
 		const topicContainer = container.createDiv({
 			cls: "topic-lines-container",
 		});
-
-		const topics = this.plugin.topicStore.getTopics();
 
 		if (topics.length === 0) {
 			topicContainer.createDiv({
@@ -250,6 +266,45 @@ export class TopicView extends ItemView {
 
 		// トピックを削除
 		await this.plugin.topicStore.removeTopic(topic.id);
+	}
+
+	/**
+	 * ハンバーガーメニューを表示する
+	 */
+	private showMenu(event: MouseEvent): void {
+		const menu = new Menu();
+		const hasTopics = this.plugin.topicStore.getTopics().length > 0;
+
+		menu.addItem((item) => {
+			item.setTitle("Clear all")
+				.setIcon("trash-2")
+				.setDisabled(!hasTopics)
+				.onClick(() => {
+					void this.handleClearAll();
+				});
+		});
+
+		menu.showAtMouseEvent(event);
+	}
+
+	/**
+	 * すべてのトピックを削除する
+	 */
+	private async handleClearAll(): Promise<void> {
+		const topics = this.plugin.topicStore.getTopics();
+
+		// 各トピックのブロックIDをファイルから削除
+		for (const topic of topics) {
+			const file = this.plugin.app.vault.getAbstractFileByPath(
+				topic.filePath,
+			);
+			if (file instanceof TFile) {
+				await removeBlockIdFromFile(this.plugin, file, topic.blockId);
+			}
+		}
+
+		// すべてのトピックを削除
+		await this.plugin.topicStore.clearAllTopics();
 	}
 
 	/**
