@@ -11,7 +11,7 @@ An Obsidian plugin that lets you pin specific lines from your notes as topics in
 - **Register topics**: Select any text in your notes and register it as a topic
 - **Sidebar view**: Access all your registered topics from a dedicated sidebar panel
 - **Quick navigation**: Click a topic to jump directly to that line in the source file
-- **Keyboard shortcuts**: Jump to topics 1-3 using customizable hotkeys
+- **Keyboard shortcuts**: Jump to topics 1-9 using customizable hotkeys
 - **Drag and drop reordering**: Reorganize your topics by dragging them in the sidebar
 - **Markdown rendering**: Topics display with full Markdown formatting
 - **Frontmatter display**: Optionally show frontmatter values alongside topics
@@ -43,7 +43,7 @@ Run the command **Topic Lines: Show sidebar** or click the sidebar icon to open 
 ### Navigating to a topic
 
 - Click any topic in the sidebar to jump to its location in the source file
-- Use the commands **Topic Lines: Jump to topic 1/2/3** for quick keyboard navigation
+- Use the commands **Topic Lines: Jump to topic 1-9** for quick keyboard navigation
 
 ### Deleting a topic
 
@@ -81,6 +81,12 @@ Access settings via **Settings → Community plugins → Topic Lines**.
 | Jump to topic 1 | Navigate to the first topic |
 | Jump to topic 2 | Navigate to the second topic |
 | Jump to topic 3 | Navigate to the third topic |
+| Jump to topic 4 | Navigate to the fourth topic |
+| Jump to topic 5 | Navigate to the fifth topic |
+| Jump to topic 6 | Navigate to the sixth topic |
+| Jump to topic 7 | Navigate to the seventh topic |
+| Jump to topic 8 | Navigate to the eighth topic |
+| Jump to topic 9 | Navigate to the ninth topic |
 | Clear all topics | Remove all registered topics |
 
 ## License
