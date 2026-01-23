@@ -237,7 +237,7 @@ export function registerCommands(plugin: TopicLinePlugin): void {
 	});
 
 	// ジャンプコマンド（1〜3）
-	for (let i = 1; i <= 3; i++) {
+	for (let i = 1; i <= 9; i++) {
 		plugin.addCommand({
 			id: `jump-to-topic-${i}`,
 			name: `Jump to topic ${i}`,
