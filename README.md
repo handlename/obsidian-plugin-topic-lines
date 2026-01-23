@@ -75,6 +75,7 @@ Access settings via **Settings → Community plugins → Topic Lines**.
 | Command | Description |
 |---------|-------------|
 | Register selected lines | Register selected text (or current line) as a topic |
+| Unregister selected lines | Unregister topics on selected lines (or current line) |
 | Toggle current line | Toggle registration of the current line as a topic |
 | Show sidebar | Open the topic list sidebar |
 | Jump to topic 1 | Navigate to the first topic |

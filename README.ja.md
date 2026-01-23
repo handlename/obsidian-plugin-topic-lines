@@ -73,6 +73,7 @@
 | コマンド | 説明 |
 |---------|------|
 | Register selected lines | 選択したテキスト（またはカーソル行）をトピックとして登録 |
+| Unregister selected lines | 選択した行（またはカーソル行）のトピック登録を解除 |
 | Toggle current line | カーソル行のトピック登録/解除を切り替え |
 | Show sidebar | トピック一覧のサイドバーを開く |
 | Jump to topic 1 | 1番目のトピックにナビゲート |
