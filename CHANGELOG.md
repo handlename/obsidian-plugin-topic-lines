@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.2.0](https://github.com/handlename/obsidian-plugin-topic-lines/compare/1.1.0...1.2.0) - 2026-01-23
+- refactor: rename commands for clarity by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/12
+- feat: add unregister-topic command by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/11
+- feat: add Jump to topic 4-9 commands by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/14
+
 ## [1.1.0](https://github.com/handlename/obsidian-plugin-topic-lines/compare/1.0.0...1.1.0) - 2026-01-17
 - fix: display indented list items correctly in sidebar by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/5
 - feat: register current line as topic when no selection by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/7
