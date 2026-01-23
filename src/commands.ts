@@ -56,7 +56,7 @@ export function registerCommands(plugin: TopicLinePlugin): void {
 	// トピック登録コマンド
 	plugin.addCommand({
 		id: "register-topic",
-		name: "Register topic",
+		name: "Register selected lines",
 		editorCallback: async (editor: Editor, view: MarkdownView) => {
 			const file = view.file;
 			if (!file) {
@@ -104,7 +104,7 @@ export function registerCommands(plugin: TopicLinePlugin): void {
 				);
 				new Notice("Topic registered");
 			} else {
-			new Notice("Cannot add topic: maximum limit (20) reached");
+				new Notice("Cannot add topic: maximum limit (20) reached");
 			}
 		},
 	});
@@ -112,7 +112,7 @@ export function registerCommands(plugin: TopicLinePlugin): void {
 	// トピック登録/解除トグルコマンド
 	plugin.addCommand({
 		id: "toggle-register-topic",
-		name: "Toggle register topic",
+		name: "Toggle current line",
 		editorCallback: async (editor: Editor, view: MarkdownView) => {
 			const file = view.file;
 			if (!file) {

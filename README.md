@@ -22,11 +22,19 @@ An Obsidian plugin that lets you pin specific lines from your notes as topics in
 
 ### Registering a topic
 
-1. Open a note and select the text you want to register as a topic
+1. Open a note and select the text you want to register as a topic (or place cursor on a line)
 2. Open the command palette (Cmd/Ctrl + P)
-3. Run the command **Topic Lines: Register topic**
+3. Run the command **Topic Lines: Register selected lines**
 
-The selected text will be saved and appear in the sidebar.
+The selected text (or current line) will be saved and appear in the sidebar.
+
+### Toggling a topic
+
+1. Place your cursor on a line that you want to register or unregister as a topic
+2. Open the command palette (Cmd/Ctrl + P)
+3. Run the command **Topic Lines: Toggle current line**
+
+If the line is already registered as a topic, it will be unregistered. Otherwise, it will be registered as a new topic.
 
 ### Viewing topics
 
@@ -66,11 +74,13 @@ Access settings via **Settings → Community plugins → Topic Lines**.
 
 | Command | Description |
 |---------|-------------|
-| Register topic | Register selected text as a topic |
+| Register selected lines | Register selected text (or current line) as a topic |
+| Toggle current line | Toggle registration of the current line as a topic |
 | Show sidebar | Open the topic list sidebar |
 | Jump to topic 1 | Navigate to the first topic |
 | Jump to topic 2 | Navigate to the second topic |
 | Jump to topic 3 | Navigate to the third topic |
+| Clear all topics | Remove all registered topics |
 
 ## License
 
