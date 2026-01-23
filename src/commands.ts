@@ -109,6 +109,59 @@ export function registerCommands(plugin: TopicLinePlugin): void {
 		},
 	});
 
+	// トピック解除コマンド
+	plugin.addCommand({
+		id: "unregister-topic",
+		name: "Unregister selected lines",
+		editorCallback: async (editor: Editor, view: MarkdownView) => {
+			const file = view.file;
+			if (!file) {
+				new Notice("No file is open");
+				return;
+			}
+
+			const selection = editor.getSelection();
+			let from: { line: number; ch: number };
+			let to: { line: number; ch: number };
+
+			if (selection) {
+				from = editor.getCursor("from");
+				to = editor.getCursor("to");
+			} else {
+				const cursor = editor.getCursor();
+				from = { line: cursor.line, ch: 0 };
+				to = { line: cursor.line, ch: 0 };
+			}
+
+			// 現在の選択範囲と重複するトピックを探す
+			const existingTopics = plugin.topicStore.getTopicsByFilePath(
+				file.path,
+			);
+			const overlappingTopics = existingTopics.filter(
+				(topic) =>
+					from.line <= topic.endLine && to.line >= topic.startLine,
+			);
+
+			if (overlappingTopics.length === 0) {
+				new Notice("No topic found on selected lines");
+				return;
+			}
+
+			// 重複するすべてのトピックを解除
+			for (const topic of overlappingTopics) {
+				await removeBlockIdFromFile(plugin, file, topic.blockId);
+				await plugin.topicStore.removeTopic(topic.id);
+			}
+
+			const count = overlappingTopics.length;
+			new Notice(
+				count === 1
+					? "Topic unregistered"
+					: `${count} topics unregistered`,
+			);
+		},
+	});
+
 	// トピック登録/解除トグルコマンド
 	plugin.addCommand({
 		id: "toggle-register-topic",
