@@ -1,7 +1,7 @@
 {
 	"id": "topic-lines",
 	"name": "Topic Lines",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"minAppVersion": "0.15.0",
 	"description": "Display any lines from your notes as topics in the sidebar for quick access and navigation.",
 	"author": "handlename",
