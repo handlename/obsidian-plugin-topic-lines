@@ -87,6 +87,20 @@ export function registerCommands(plugin: TopicLinePlugin): void {
 				}
 			}
 
+			// 現在の選択範囲と重複するトピックがないか確認
+			const existingTopics = plugin.topicStore.getTopicsByFilePath(
+				file.path,
+			);
+			const overlappingTopic = existingTopics.find(
+				(topic) =>
+					from.line <= topic.endLine && to.line >= topic.startLine,
+			);
+
+			if (overlappingTopic) {
+				new Notice("Topic already registered on this line");
+				return;
+			}
+
 			const topic = await plugin.topicStore.addTopic({
 				filePath: file.path,
 				startLine: from.line,
