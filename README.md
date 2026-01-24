@@ -4,7 +4,7 @@
 
 An Obsidian plugin that lets you pin specific lines from your notes as topics in a sidebar for quick access and navigation.
 
-![Screenshot](docs/images/screenshot.png)
+![Screencast](docs/images/screencast.gif)
 
 ## Features
 

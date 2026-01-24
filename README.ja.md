@@ -2,7 +2,7 @@
 
 ノート内の任意の行をトピックとしてサイドバーにピン留めし、素早くアクセス・ナビゲーションできるObsidianプラグインです。
 
-![スクリーンショット](docs/images/screenshot.png)
+![スクリーンキャスト](docs/images/screencast.gif)
 
 ## 機能
 
