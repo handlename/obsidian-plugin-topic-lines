@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.1](https://github.com/handlename/obsidian-plugin-topic-lines/compare/1.2.0...1.2.1) - 2026-01-24
+- fix: prevent duplicate topic registration on same line by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/15
+- docs: replace screenshot with screencast GIF by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/17
+
 ## [1.2.0](https://github.com/handlename/obsidian-plugin-topic-lines/compare/1.1.0...1.2.0) - 2026-01-23
 - refactor: rename commands for clarity by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/12
 - feat: add unregister-topic command by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/11
