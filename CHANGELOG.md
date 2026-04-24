@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.2.2](https://github.com/handlename/obsidian-plugin-topic-lines/compare/1.2.1...1.2.2) - 2026-04-24
+- Introduce domain glossary and align naming by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/18
+
 ## [1.2.1](https://github.com/handlename/obsidian-plugin-topic-lines/compare/1.2.0...1.2.1) - 2026-01-24
 - fix: prevent duplicate topic registration on same line by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/15
 - docs: replace screenshot with screencast GIF by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/17
