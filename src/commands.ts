@@ -1,6 +1,6 @@
 import { Editor, MarkdownView, Notice, TFile } from "obsidian";
 import type TopicLinePlugin from "./main";
-import { VIEW_TYPE_TOPIC_LINES } from "./topic-view";
+import { TOPIC_SIDEBAR_VIEW_TYPE } from "./topic-view";
 import {
 	addBlockIdToLine,
 	removeBlockIdFromLine,
@@ -299,7 +299,7 @@ export function registerCommands(plugin: TopicLinePlugin): void {
 		name: "Show sidebar",
 		callback: () => {
 			const leaves = plugin.app.workspace.getLeavesOfType(
-				VIEW_TYPE_TOPIC_LINES,
+				TOPIC_SIDEBAR_VIEW_TYPE,
 			);
 			if (leaves.length > 0 && leaves[0]) {
 				void plugin.app.workspace.revealLeaf(leaves[0]);
@@ -307,7 +307,7 @@ export function registerCommands(plugin: TopicLinePlugin): void {
 				const rightLeaf = plugin.app.workspace.getRightLeaf(false);
 				if (rightLeaf) {
 					void rightLeaf.setViewState({
-						type: VIEW_TYPE_TOPIC_LINES,
+						type: TOPIC_SIDEBAR_VIEW_TYPE,
 						active: true,
 					});
 				}

@@ -2,8 +2,8 @@ import { Plugin } from "obsidian";
 import { Topic, TopicData } from "./types";
 import { generateUUID, generateBlockId } from "./utils";
 
-/** トピック数の上限 */
-const MAX_TOPICS = 20;
+/** トピック数の上限 (Topic Limit) */
+const TOPIC_LIMIT = 20;
 
 /**
  * トピックデータの管理（CRUD）と永続化を担うクラス
@@ -39,7 +39,7 @@ export class TopicStore {
 	async addTopic(
 		topicData: Omit<Topic, "id" | "createdAt" | "blockId" | "lineCount">,
 	): Promise<Topic | null> {
-		if (this.data.topics.length >= MAX_TOPICS) {
+		if (this.data.topics.length >= TOPIC_LIMIT) {
 			return null;
 		}
 

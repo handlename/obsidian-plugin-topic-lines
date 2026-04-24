@@ -193,7 +193,7 @@ function formatFrontmatterValue(value: unknown): string;
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ TopicView.render() が再実行される                               │
+│ TopicSidebarView.render() が再実行される                        │
 │ - 新しい設定値でfrontmatter/ファイル名表示を更新               │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -202,7 +202,7 @@ function formatFrontmatterValue(value: unknown): string;
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ TopicView.renderTopicItem() 実行時                             │
+│ TopicSidebarView.renderTopicItem() 実行時                      │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
