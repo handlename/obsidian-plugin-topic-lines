@@ -2,7 +2,7 @@ import { Plugin, TAbstractFile, TFile } from "obsidian";
 import { DEFAULT_SETTINGS, TopicLineSettings } from "./settings";
 import { TopicLineSettingTab } from "./settings-tab";
 import { TopicStore } from "./topic-store";
-import { TopicView, VIEW_TYPE_TOPIC_LINES } from "./topic-view";
+import { TopicSidebarView, TOPIC_SIDEBAR_VIEW_TYPE } from "./topic-view";
 import { registerCommands } from "./commands";
 import { debounce, findLineByBlockId, removeBlockIdFromLine } from "./utils";
 
@@ -20,8 +20,8 @@ export default class TopicLinePlugin extends Plugin {
 
 		// ビューの登録
 		this.registerView(
-			VIEW_TYPE_TOPIC_LINES,
-			(leaf) => new TopicView(leaf, this),
+			TOPIC_SIDEBAR_VIEW_TYPE,
+			(leaf) => new TopicSidebarView(leaf, this),
 		);
 
 		// コマンドの登録
@@ -138,7 +138,7 @@ export default class TopicLinePlugin extends Plugin {
 		// ファイル削除時（ビューの再描画で警告表示）
 		this.registerEvent(
 			this.app.vault.on("delete", () => {
-				// TopicView が onChange で再描画するため、通知のみ
+				// TopicSidebarView が onChange で再描画するため、通知のみ
 				this.topicStore["notifyChange"]();
 			}),
 		);

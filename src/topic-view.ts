@@ -14,12 +14,12 @@ import { removeBlockIdFromFile } from "./commands";
 import { getFrontmatterValues } from "./frontmatter";
 import { dedent } from "./utils";
 
-export const VIEW_TYPE_TOPIC_LINES = "topic-lines-view";
+export const TOPIC_SIDEBAR_VIEW_TYPE = "topic-lines-view";
 
 /**
- * サイドバーにトピック一覧を表示するビュー
+ * サイドバーにトピック一覧を表示するビュー (Sidebar View)
  */
-export class TopicView extends ItemView {
+export class TopicSidebarView extends ItemView {
 	private plugin: TopicLinePlugin;
 	private renderComponent: Component;
 
@@ -30,7 +30,7 @@ export class TopicView extends ItemView {
 	}
 
 	getViewType(): string {
-		return VIEW_TYPE_TOPIC_LINES;
+		return TOPIC_SIDEBAR_VIEW_TYPE;
 	}
 
 	getDisplayText(): string {
