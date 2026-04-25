@@ -4,29 +4,36 @@ import {
 	MarkdownRenderer,
 	MarkdownView,
 	Menu,
-	TFile,
 	WorkspaceLeaf,
 	setIcon,
 } from "obsidian";
 import type TopicLinePlugin from "./main";
-import { Topic } from "./types";
-import { removeBlockIdFromFile } from "./commands";
+import { Slot, Topic } from "./types";
+import {
+	cleanupTopicBlockId,
+	clearAllTopicsConfirmed,
+} from "./commands";
+import { ConfirmClearAllModal } from "./confirm-modal";
 import { getFrontmatterValues } from "./frontmatter";
 import { dedent } from "./utils";
 
 export const TOPIC_SIDEBAR_VIEW_TYPE = "topic-lines-view";
 
 /**
- * サイドバーにトピック一覧を表示するビュー (Sidebar View)
+ * サイドバーに slot 一覧（topic 含む）を表示するビュー（v2）。
  */
 export class TopicSidebarView extends ItemView {
 	private plugin: TopicLinePlugin;
 	private renderComponent: Component;
+	private handleStoreChange: () => void;
+	private handleSettingsChange: () => void;
 
 	constructor(leaf: WorkspaceLeaf, plugin: TopicLinePlugin) {
 		super(leaf);
 		this.plugin = plugin;
 		this.renderComponent = new Component();
+		this.handleStoreChange = () => this.render();
+		this.handleSettingsChange = () => this.render();
 	}
 
 	getViewType(): string {
@@ -43,66 +50,71 @@ export class TopicSidebarView extends ItemView {
 
 	async onOpen(): Promise<void> {
 		this.render();
-		this.plugin.topicStore.onChange(() => this.render());
-		this.plugin.onSettingsChange(() => this.render());
+		this.plugin.topicStore.onChange(this.handleStoreChange);
+		this.plugin.onSettingsChange(this.handleSettingsChange);
 	}
 
 	async onClose(): Promise<void> {
+		this.plugin.topicStore.offChange(this.handleStoreChange);
+		this.plugin.offSettingsChange(this.handleSettingsChange);
 		this.renderComponent.unload();
 	}
 
 	/**
-	 * ビューを再描画する
+	 * ビューを再描画する。
+	 * 全 slot を並び順で表示し、空 slot もプレースホルダとして表示する。
 	 */
 	render(): void {
 		const container = this.containerEl.children[1] as
 			| HTMLElement
 			| undefined;
-		if (!container) {
-			return;
-		}
+		if (!container) return;
 		container.empty();
 
-		const topics = this.plugin.topicStore.getTopics();
+		const slots = this.plugin.topicStore.getSlots();
 
-		// ヘッダー部分（ハンバーガーメニューを含む）
+		// ヘッダー
 		const headerContainer = container.createDiv({
 			cls: "topic-lines-header",
 		});
-
 		const menuButton = headerContainer.createEl("button", {
 			cls: "topic-lines-menu-button clickable-icon",
 			attr: { "aria-label": "Menu" },
 		});
 		setIcon(menuButton, "menu");
-		menuButton.addEventListener("click", (event) => {
+		this.registerDomEvent(menuButton, "click", (event) => {
 			this.showMenu(event);
 		});
 
-		const topicContainer = container.createDiv({
+		const slotContainer = container.createDiv({
 			cls: "topic-lines-container",
 		});
 
-		if (topics.length === 0) {
-			topicContainer.createDiv({
+		if (slots.length === 0) {
+			slotContainer.createDiv({
 				cls: "topic-lines-empty",
-				text: "No topics registered",
+				text: "No slots configured",
 			});
 			return;
 		}
 
-		for (const [i, topic] of topics.entries()) {
-			this.renderTopicItem(topicContainer, topic, i);
+		for (const [i, slot] of slots.entries()) {
+			if (slot.topic) {
+				this.renderSlotWithTopic(slotContainer, slot, slot.topic, i);
+			} else {
+				this.renderEmptySlot(slotContainer, slot);
+			}
 		}
 	}
 
 	/**
-	 * 個別トピックアイテムを描画する
+	 * topic がセットされた slot を描画する。
 	 */
-	private renderTopicItem(
+	private renderSlotWithTopic(
 		container: HTMLElement,
+		slot: Slot,
 		topic: Topic,
-		index: number,
+		_slotIndex: number,
 	): void {
 		const fileExists = this.plugin.app.vault.getAbstractFileByPath(
 			topic.filePath,
@@ -110,22 +122,24 @@ export class TopicSidebarView extends ItemView {
 
 		const itemEl = container.createDiv({
 			cls: "topic-item",
-			attr: { "data-topic-id": topic.id, draggable: "true" },
+			attr: { "data-topic-id": topic.id },
 		});
 
-		// 番号
-		itemEl.createDiv({
-			cls: "topic-number",
-			text: `${index + 1}.`,
+		// 1行目: slot 名 + 削除ボタン
+		const headerEl = itemEl.createDiv({ cls: "topic-item-header" });
+		headerEl.createDiv({
+			cls: "topic-slot-name",
+			text: slot.name,
 		});
 
-		// コンテンツ部分
-		const contentWrapper = itemEl.createDiv({
-			cls: "topic-content-wrapper",
+		const deleteBtn = headerEl.createEl("button", {
+			cls: "topic-delete-btn",
+			attr: { "aria-label": "Clear slot" },
 		});
+		deleteBtn.textContent = "×";
 
-		// 内容（Markdownとしてレンダリング）
-		const contentEl = contentWrapper.createDiv({
+		// 2行目: topic 内容（Markdown レンダリング）
+		const contentEl = itemEl.createDiv({
 			cls: "topic-content",
 		});
 		void MarkdownRenderer.render(
@@ -136,35 +150,25 @@ export class TopicSidebarView extends ItemView {
 			this.renderComponent,
 		);
 
-		// Frontmatter情報
-		this.renderFrontmatter(contentWrapper, topic.filePath);
-
-		// ファイル情報（設定に応じて表示）
+		// 3行目: ファイル名（設定で有効な場合のみ）
 		if (this.plugin.settings.showFileName) {
 			const fileName = topic.filePath.split("/").pop() ?? topic.filePath;
-			contentWrapper.createDiv({
+			itemEl.createDiv({
 				cls: "topic-file-info",
 				text: fileName,
 			});
 		}
 
-		// アラート（ファイル不在時）
+		// 補助情報: frontmatter / file-not-found warning
+		this.renderFrontmatter(itemEl, topic.filePath);
+
 		if (!fileExists) {
-			contentWrapper.createDiv({
+			itemEl.createDiv({
 				cls: "topic-alert",
 				text: "⚠ File not found",
 			});
 		}
 
-		// アクション
-		const actionsEl = itemEl.createDiv({ cls: "topic-actions" });
-		const deleteBtn = actionsEl.createEl("button", {
-			cls: "topic-delete-btn",
-			attr: { "aria-label": "Delete topic" },
-		});
-		deleteBtn.textContent = "×";
-
-		// イベントハンドラ
 		itemEl.addEventListener("click", (e) => {
 			if (
 				e.target === deleteBtn ||
@@ -179,24 +183,31 @@ export class TopicSidebarView extends ItemView {
 			e.stopPropagation();
 			void this.handleDelete(topic);
 		});
-
-		// ドラッグ＆ドロップ
-		this.setupDragAndDrop(itemEl, index);
 	}
 
 	/**
-	 * Frontmatter情報を描画する
+	 * 空 slot をプレースホルダとして描画する。
 	 */
+	private renderEmptySlot(container: HTMLElement, slot: Slot): void {
+		const itemEl = container.createDiv({
+			cls: "topic-item topic-item-empty",
+		});
+		itemEl.createDiv({
+			cls: "topic-slot-name",
+			text: slot.name,
+		});
+		itemEl.createDiv({
+			cls: "topic-empty-placeholder",
+			text: "(empty)",
+		});
+	}
+
 	private renderFrontmatter(container: HTMLElement, filePath: string): void {
 		const keys = this.plugin.settings.frontmatterKeys;
-		if (keys.length === 0) {
-			return;
-		}
+		if (keys.length === 0) return;
 
 		const values = getFrontmatterValues(this.plugin.app, filePath, keys);
-		if (values.size === 0) {
-			return;
-		}
+		if (values.size === 0) return;
 
 		const frontmatterEl = container.createDiv({
 			cls: "topic-frontmatter",
@@ -220,9 +231,6 @@ export class TopicSidebarView extends ItemView {
 		}
 	}
 
-	/**
-	 * トピッククリック時の処理
-	 */
 	private async handleTopicClick(topic: {
 		filePath: string;
 		startLine: number;
@@ -230,10 +238,7 @@ export class TopicSidebarView extends ItemView {
 		const file = this.plugin.app.vault.getAbstractFileByPath(
 			topic.filePath,
 		);
-		if (!file) {
-			// ファイルが存在しない
-			return;
-		}
+		if (!file) return;
 
 		await this.plugin.app.workspace.openLinkText(topic.filePath, "", false);
 
@@ -252,93 +257,35 @@ export class TopicSidebarView extends ItemView {
 		}
 	}
 
-	/**
-	 * 削除ボタンクリック時の処理
-	 */
 	private async handleDelete(topic: Topic): Promise<void> {
-		// ファイルからブロックIDを削除
-		const file = this.plugin.app.vault.getAbstractFileByPath(
-			topic.filePath,
-		);
-		if (file instanceof TFile) {
-			await removeBlockIdFromFile(this.plugin, file, topic.blockId);
+		await cleanupTopicBlockId(this.plugin, topic);
+		const slotIndex = this.plugin.topicStore.findTopicSlotIndex(topic.id);
+		if (slotIndex >= 0) {
+			await this.plugin.topicStore.clearSlot(slotIndex);
 		}
-
-		// トピックを削除
-		await this.plugin.topicStore.removeTopic(topic.id);
 	}
 
-	/**
-	 * ハンバーガーメニューを表示する
-	 */
 	private showMenu(event: MouseEvent): void {
 		const menu = new Menu();
-		const hasTopics = this.plugin.topicStore.getTopics().length > 0;
+		const occupiedCount = this.plugin.topicStore
+			.getSlots()
+			.filter((s) => s.topic !== null).length;
 
 		menu.addItem((item) => {
 			item.setTitle("Clear all")
 				.setIcon("trash-2")
-				.setDisabled(!hasTopics)
+				.setDisabled(occupiedCount === 0)
 				.onClick(() => {
-					void this.handleClearAll();
+					this.handleClearAll(occupiedCount);
 				});
 		});
 
 		menu.showAtMouseEvent(event);
 	}
 
-	/**
-	 * すべてのトピックを削除する
-	 */
-	private async handleClearAll(): Promise<void> {
-		const topics = this.plugin.topicStore.getTopics();
-
-		// 各トピックのブロックIDをファイルから削除
-		for (const topic of topics) {
-			const file = this.plugin.app.vault.getAbstractFileByPath(
-				topic.filePath,
-			);
-			if (file instanceof TFile) {
-				await removeBlockIdFromFile(this.plugin, file, topic.blockId);
-			}
-		}
-
-		// すべてのトピックを削除
-		await this.plugin.topicStore.clearAllTopics();
-	}
-
-	/**
-	 * ドラッグ＆ドロップを設定する
-	 */
-	private setupDragAndDrop(itemEl: HTMLElement, index: number): void {
-		itemEl.addEventListener("dragstart", (e) => {
-			e.dataTransfer?.setData("text/plain", index.toString());
-			itemEl.addClass("dragging");
-		});
-
-		itemEl.addEventListener("dragend", () => {
-			itemEl.removeClass("dragging");
-		});
-
-		itemEl.addEventListener("dragover", (e) => {
-			e.preventDefault();
-			itemEl.addClass("drag-over");
-		});
-
-		itemEl.addEventListener("dragleave", () => {
-			itemEl.removeClass("drag-over");
-		});
-
-		itemEl.addEventListener("drop", (e) => {
-			e.preventDefault();
-			itemEl.removeClass("drag-over");
-
-			const fromIndex = parseInt(
-				e.dataTransfer?.getData("text/plain") ?? "-1",
-			);
-			if (fromIndex >= 0 && fromIndex !== index) {
-				void this.plugin.topicStore.reorderTopics(fromIndex, index);
-			}
-		});
+	private handleClearAll(occupiedCount: number): void {
+		new ConfirmClearAllModal(this.plugin.app, occupiedCount, () => {
+			void clearAllTopicsConfirmed(this.plugin);
+		}).open();
 	}
 }

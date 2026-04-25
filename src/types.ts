@@ -1,3 +1,5 @@
+import type { TopicLineSettings } from "./settings";
+
 /**
  * トピックを表す型
  */
@@ -28,12 +30,62 @@ export interface Topic {
 }
 
 /**
- * 永続化用のトピックデータ型
+ * 衝突時の挙動モード（per-slot direct-set commands で参照）
  */
-export interface TopicData {
-	/** データフォーマットバージョン（将来の移行用） */
+export type CollisionMode = "overwrite" | "confirm";
+
+/**
+ * Slot は名前付きの topic 配置先（v2 のコア概念）
+ */
+export interface Slot {
+	/** スロット名（ユーザーが設定可能） */
+	name: string;
+
+	/** スロットに紐づくトピック（空の場合は null） */
+	topic: Topic | null;
+}
+
+/**
+ * v1 永続化フォーマット（マイグレーション専用）
+ */
+export interface TopicDataV1 {
+	/** データフォーマットバージョン */
 	version: 1;
 
 	/** トピック配列（表示順） */
 	topics: Topic[];
 }
+
+/**
+ * v2 永続化フォーマット（slot ベース）
+ */
+export interface TopicDataV2 {
+	/** データフォーマットバージョン */
+	version: 2;
+
+	/** スロット配列（表示順） */
+	slots: Slot[];
+
+	/** プラグイン設定（v2 では TopicData の中に保持） */
+	settings: TopicLineSettings;
+}
+
+/**
+ * loadData() 結果のパース用ユニオン型
+ */
+export type TopicDataAny = TopicDataV1 | TopicDataV2;
+
+/** スロット数の上限 */
+export const SLOT_LIMIT = 20;
+
+/** スロット数の下限 */
+export const SLOT_MIN = 1;
+
+/** デフォルトのスロット数 */
+export const DEFAULT_SLOT_COUNT = 3;
+
+/** デフォルトのスロット名 */
+export const DEFAULT_SLOT_NAMES = ["slot1", "slot2", "slot3"] as const;
+
+/** スロット名の最大文字数 */
+export const SLOT_NAME_MAX_LENGTH = 50;
