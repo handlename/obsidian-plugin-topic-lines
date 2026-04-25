@@ -1,5 +1,35 @@
 # Changelog
 
+## [2.0.0] - Unreleased
+
+### Breaking Changes
+
+- Data format changed from a flat topic array (v1) to a slot-based model (v2)
+- v1 data is automatically migrated on first load; the migration is **irreversible**
+- New per-slot commands (`Set topic to {slotName}`, `Jump to {slotName}`) are dynamically registered per slot
+- `Jump to topic 1`–`Jump to topic 9` (IDs `jump-to-topic-1` through `jump-to-topic-9`) are retained as position-based commands; existing v1 hotkey bindings continue to work and now navigate to the topic in the slot at that position
+- Drag-and-drop reordering in the sidebar is removed (slot order is managed in settings)
+- Minimum Obsidian version is now `1.7.2` (required for `Plugin.removeCommand` API used during slot CRUD)
+
+### Added
+
+- Slot-based topic organization (1–20 named slots, default 3: `slot1`, `slot2`, `slot3`)
+- `Set topic to {slotName}` command for each slot (dynamically registered)
+- `Jump to {slotName}` command for each slot (dynamically registered)
+- `Collision mode` setting: choose between `Confirm before overwrite` and `Overwrite without confirmation`
+- Settings UI for slot management (add, delete, rename, reorder via up/down buttons)
+- Empty slot placeholders shown in the sidebar
+- Confirmation modal before `Clear all topics` (in both command palette and sidebar menu)
+- Pre-migration v1 data dumped to `console.debug` for power-user recovery
+
+### Changed
+
+- `Register selected lines` now assigns the topic to the first empty slot. If all slots are full, a notice is shown and nothing is registered.
+- `Clear all topics` clears all slot contents but preserves the slots themselves
+- Sidebar always displays all slots in their configured order, with a vertical layout: slot name, topic content, source filename
+- Slot rename / reorder / add / remove now refresh per-slot commands in place — no plugin restart required
+- Plugin version bumped to `2.0.0`
+
 ## [1.2.1](https://github.com/handlename/obsidian-plugin-topic-lines/compare/1.2.0...1.2.1) - 2026-01-24
 - fix: prevent duplicate topic registration on same line by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/15
 - docs: replace screenshot with screencast GIF by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/17
