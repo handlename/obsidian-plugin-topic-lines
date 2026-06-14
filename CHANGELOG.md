@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.0.0](https://github.com/handlename/obsidian-plugin-topic-lines/compare/1.2.2...2.0.0) - 2026-04-25
+- feat: slot-based topic management (v2.0.0) by @handlename in https://github.com/handlename/obsidian-plugin-topic-lines/pull/20
+
 ## [2.0.0] - Unreleased
 
 ### Breaking Changes
